@@ -40,7 +40,7 @@ describe("RangeZone", function () {
 
   describe("stake", function () {
     beforeEach(async function () {
-      await rangeZone.createMarket(3600);
+      await rangeZone.createMarket(3600, 1, 2);
     });
 
     it("should allow user to stake in a valid bracket", async function () {
@@ -68,7 +68,7 @@ describe("RangeZone", function () {
 
   describe("resolve", function () {
     beforeEach(async function () {
-      await rangeZone.createMarket(3600);
+      await rangeZone.createMarket(3600, 5, 10);
       await rangeZone.connect(user1).stake(0, {
         value: ethers.parseEther("0.01"),
       });
@@ -108,7 +108,7 @@ describe("RangeZone", function () {
 
   describe("claim", function () {
     beforeEach(async function () {
-      await rangeZone.createMarket(3600);
+      await rangeZone.createMarket(3600, 1, 2);
       await rangeZone.connect(user1).stake(0, {
         value: ethers.parseEther("0.01"),
       });
@@ -142,13 +142,13 @@ describe("RangeZone", function () {
 
   describe("withdrawFee", function () {
     beforeEach(async function () {
-      await rangeZone.createMarket(3600);
-      await rangeZone.connect(owner).stake(0, {
+      await rangeZone.createMarket(3600, 1, 2);
+      await rangeZone.connect(user1).stake(0, {
         value: ethers.parseEther("0.01"),
       });
       await time.increase(3601);
       await rangeZone.resolve();
-      await rangeZone.connect(owner).claim();
+      await rangeZone.connect(user1).claim();
     });
 
     it("should allow owner to withdraw accumulated fee", async function () {
@@ -158,7 +158,7 @@ describe("RangeZone", function () {
     });
 
     it("should revert if non owner tries to withdraw fee", async function () {
-      await expect(rangeZone.connect(owner).withdrawFee()).to.be.revertedWith(
+      await expect(rangeZone.connect(user1).withdrawFee()).to.be.revertedWith(
         "Only owner"
       );
     });
