@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { markets } from "../../../../lib/utils/Market";
+import { markets } from "../../../../lib/utils/data/Market";
 import { Market } from "../../../types/market";
 import { Clock, ArrowLeft, MessageSquare, Send } from "lucide-react";
 import { useAccount } from "wagmi";
