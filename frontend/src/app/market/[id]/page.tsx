@@ -9,7 +9,7 @@ import { Clock, ArrowLeft, MessageSquare, Send } from "lucide-react";
 import { useAccount } from "wagmi";
 import Chart from "../../../components/chart";
 import TradePanel from "../../../components/tradePanel";
-// import { ethers } from "ethers";
+import { ethers } from "ethers";
 
 interface Comment {
     id: string;
@@ -81,9 +81,9 @@ export default function MarketDetailPage() {
         if (!contractAddress || !abi || !method) return null;
         try {
             if (!(window as any).ethereum) throw new Error("No wallet provider");
-            const provider = new ethers.providers.Web3Provider((window as any).ethereum);
+            const provider = new ethers.BrowserProvider(window.ethereum);
             await provider.send("eth_requestAccounts", []);
-            const signer = provider.getSigner();
+          const signer = await provider.getSigner();
             const contract = new ethers.Contract(contractAddress, abi, signer);
             const tx = await contract[method](...args);
             await tx.wait();
