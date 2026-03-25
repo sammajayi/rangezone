@@ -2,14 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  experimental: {
-    serverComponentsExternalPackages: ["pino", "thread-stream"]
-  },
+  serverExternalPackages: ["pino", "thread-stream"],
 
-  webpack: (config) => {
-    config.externals.push('pino-pretty', 'lokijs', 'encoding');
-    return config;
-  }
+  turbopack: {} // 👈 add this to silence the error
 };
 
 module.exports = nextConfig;

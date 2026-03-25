@@ -146,7 +146,7 @@ const Example: React.FC<ChartProps> = ({ lastVote = null, tradeEvent = null }) =
             ticks={[0, 20, 40, 60, 80, 100]}
             tickFormatter={(v) => `${v}%`}
           />
-          <Tooltip formatter={(value: number) => `${value}%`} />
+          <Tooltip formatter={(value) => value !== undefined ? `${value}%` : ''} />
           <Legend />
           <Line
             type="monotone"
