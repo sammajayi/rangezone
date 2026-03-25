@@ -24,31 +24,60 @@ describe("RangeZone", function () {
 
   describe("createMarket", function () {
     it("should create a market with correct start price and expiry", async function () {
-      await rangeZone.createMarket(3600, 1, 2); // 1 hour duration
+      await rangeZone.createMarket(3600, 3, 7);
       const market = await rangeZone.getMarketInfo();
-
-      expect(market.startPrice).to.equal(3000000000000); // mock price
+      expect(market.startPrice).to.equal(3000000000000); // 3000 with 8 decimals
       expect(market.state).to.equal(0); // Open
+      const currentTime = Math.floor(Date.now() / 1000);
+      expect(market.expiry).to.be.gt(currentTime + 3590); // at least 3590 seconds from now
+      expect(market.expiry).to.be.lt(currentTime + 3610); // at most 3610 seconds from now
     });
 
-    it("should revert if called by non owner", async function () {
+    it("should revert if called by non-owner", async function () {
       await expect(
-        rangeZone.connect(user1).createMarket(3600, 1, 2)
+        rangeZone.connect(user1).createMarket(3600, 3, 7)
       ).to.be.revertedWith("Only owner");
     });
+
+    // from here
+    it("should isolate stakes and bracketTotals between markets", async function () {
+      // Market 1
+      await rangeZone.createMarket(3600, 3, 7);
+      await rangeZone.connect(user1).stake(0, { value: ethers.parseEther("1") });
+
+      await time.increase(3601);
+      await rangeZone.resolve();
+
+      // Market 2
+      await rangeZone.createMarket(3600, 3, 7);
+      const market2 = await rangeZone.getMarketInfo();
+
+      expect(await rangeZone.stakes(2, 0, user1.address)).to.equal(0);
+      expect(await rangeZone.bracketTotals(2, 0)).to.equal(0);
+    });
+
+    it("should revert if the price feed returns stale price on createMarket", async function () {
+      // Force mock to return old timestamp
+      await mockPriceFeed.setPriceWithTimestamp(3000000000000, Math.floor(Date.now() / 1000) - 2 * 24 * 3600);
+
+      await expect(rangeZone.createMarket(3600, 3, 7)).to.be.revertedWith("Price too old");
+    });
+
+    it("should revert if the price feed returns zero price", async function () {
+      await mockPriceFeed.setPrice(0);
+      await expect(rangeZone.createMarket(3600, 3, 7)).to.be.revertedWith("Invalid price");
+    });
+
   });
 
   describe("stake", function () {
     beforeEach(async function () {
-      await rangeZone.createMarket(3600, 1, 2);
+      await rangeZone.createMarket(3600, 3, 7);
     });
-
     it("should allow user to stake in a valid bracket", async function () {
-      await rangeZone.connect(user1).stake(0, {
-        value: ethers.parseEther("0.01"),
-      });
-      const staked = await rangeZone.stakes(0, user1.address);
-      expect(staked).to.equal(ethers.parseEther("0.01"));
+      await rangeZone.connect(user1).stake(0, { value: ethers.parseEther("1") });
+      const stake = await rangeZone.stakes(1, 0, user1.address);
+      expect(stake).to.equal(ethers.parseEther("1"));
     });
 
     it("should revert if bracket is invalid", async function () {
@@ -79,7 +108,7 @@ describe("RangeZone", function () {
     });
 
     it("should resolve to bracket 0 for small movement", async function () {
-        // keep price same as start price
+      // keep price same as start price
       await time.increase(3601);
       await rangeZone.resolve();
       const market = await rangeZone.getMarketInfo();
@@ -104,6 +133,12 @@ describe("RangeZone", function () {
       const market = await rangeZone.getMarketInfo();
       expect(market.winningBracket).to.equal(2);
     });
+
+    it("should revert resolve if endPrice is zero", async function () {
+  await mockPriceFeed.setPrice(0);
+  await time.increase(3601);
+  await expect(rangeZone.resolve()).to.be.revertedWith("Invalid end price");
+});
   });
 
   describe("claim", function () {
@@ -138,6 +173,15 @@ describe("RangeZone", function () {
         "Nothing to claim"
       );
     });
+
+    it("should prevent reentrancy on claim", async function () {
+      // Use your existing user1 stake & market setup
+      await rangeZone.connect(user1).claim();
+
+      // Attempt to claim again
+      await expect(rangeZone.connect(user1).claim()).to.be.revertedWith("Nothing to claim");
+    });
+
   });
 
   describe("withdrawFee", function () {

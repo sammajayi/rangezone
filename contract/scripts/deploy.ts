@@ -1,23 +1,37 @@
 import { ethers } from "hardhat";
 
-const PRICE_FEED_ADDRESS = ethers.getAddress("0xe010c800257f6d4cD3C1Cb9b0f29571f652f952");
-
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  console.log("Deploying RangeZone with account:", deployer.address);
-  console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "RBTC");
+  console.log("Deploying contracts with:", deployer.address);
+  console.log(
+    "Balance:",
+    ethers.formatEther(await ethers.provider.getBalance(deployer.address)),
+    "rBTC"
+  );
 
+  //  MockPriceFeed
+  const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
+  const mockPriceFeed = await MockPriceFeed.deploy();
+  await mockPriceFeed.waitForDeployment();
+
+  const mockAddress = await mockPriceFeed.getAddress();
+  console.log("MockPriceFeed deployed to:", mockAddress);
+
+  // OPTIONAL: set initial price (important!)
+  await mockPriceFeed.setPrice(3000000000000);
+
+  // 2️deploy RangeZone with mock address
   const RangeZone = await ethers.getContractFactory("RangeZone");
-  const rangeZone = await RangeZone.deploy(PRICE_FEED_ADDRESS);
-
+  const rangeZone = await RangeZone.deploy(mockAddress);
   await rangeZone.waitForDeployment();
 
   console.log("RangeZone deployed to:", await rangeZone.getAddress());
-  console.log("Price feed address:", PRICE_FEED_ADDRESS);
+  console.log("Using Mock Price Feed:", mockAddress);
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
