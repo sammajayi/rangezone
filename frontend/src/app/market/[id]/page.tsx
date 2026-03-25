@@ -9,7 +9,7 @@ import { Clock, ArrowLeft, MessageSquare, Send } from "lucide-react";
 import { useAccount } from "wagmi";
 import Chart from "../../../components/chart";
 import TradePanel from "../../../components/tradePanel";
-import { ethers } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 
 interface Comment {
     id: string;
@@ -81,10 +81,10 @@ export default function MarketDetailPage() {
         if (!contractAddress || !abi || !method) return null;
         try {
             if (!(window as any).ethereum) throw new Error("No wallet provider");
-            const provider = new ethers.BrowserProvider(window.ethereum);
+            const provider = new BrowserProvider(window.ethereum);
             await provider.send("eth_requestAccounts", []);
-          const signer = await provider.getSigner();
-            const contract = new ethers.Contract(contractAddress, abi, signer);
+            const signer = await provider.getSigner();
+            const contract = new Contract(contractAddress, abi, signer);
             const tx = await contract[method](...args);
             await tx.wait();
             return tx;
@@ -130,7 +130,7 @@ export default function MarketDetailPage() {
             if (market?.tradeContractAddress && market?.tradeAbi) {
                 // Example ABI/method assumptions: trade(marketId: string, isYes: bool, amount: uint256)
                 // Convert amount to wei if appropriate - this depends on your contract/token.
-                const amtArg = ethers.BigNumber.from(Math.max(1, Math.floor(amount)));
+                const amtArg = BigInt(Math.max(1, Math.floor(amount)));
                 await callOnChain(market.tradeContractAddress, market.tradeAbi, "trade", [market.id, side === "yes", amtArg]);
             }
         } catch (e) {
@@ -302,7 +302,7 @@ export default function MarketDetailPage() {
                                 <div>
                                     <p className="text-sm text-[#64748b] mb-1">Resolution Time</p>
                                     <p className="text-sm font-medium text-[#0f172a]">
-                                        {formatDate(market.resolutionTime)}
+                                        {market.resolutionTime ? formatDate(market.resolutionTime) : "TBD"}
                                     </p>
                                 </div>
                                 <div>
