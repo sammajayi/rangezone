@@ -220,7 +220,6 @@ export default function CreateMarketPage() {
               <p className="text-[#64748b]">Bracket 0: price moves &lt; {threshold1}%</p>
               <p className="text-[#64748b]">Bracket 1: price moves {threshold1}% – {threshold2}%</p>
               <p className="text-[#64748b]">Bracket 2: price moves &gt; {threshold2}%</p>
-              <p className="text-[#64748b] text-xs mt-2">Network: RSK Testnet · Contract: 0x7368…D7</p>
             </div>
 
             {isSuccess && (
