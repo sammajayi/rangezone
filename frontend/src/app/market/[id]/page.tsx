@@ -1,20 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Clock, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, Clock, Info } from "lucide-react";
 import { useAccount } from "wagmi";
 import Chart from "../../../components/chart";
 import { TradePanel } from "../../../components/tradePanel";
-import { useCurrentMarket, useBracketTotals } from "../../../hooks/useRangeZone";
+import { useMarketById, useBracketTotals } from "../../../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../../../lib/rangeZoneContract";
 
-interface Comment {
-  id: string;
-  author: string;
-  authorAddress: string;
-  content: string;
-  timestamp: string;
+function getMarketQuestion(marketId: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(`market_question_${marketId}`) ?? "";
 }
 
 function CountdownTimer({ expiry }: { expiry: bigint }) {
@@ -39,60 +36,54 @@ function CountdownTimer({ expiry }: { expiry: bigint }) {
   return <span>{time}</span>;
 }
 
-export default function MarketDetailPage() {
-  const { address, isConnected } = useAccount();
-  const { data: currentMarket, isLoading } = useCurrentMarket();
+const STATE_COLORS: Record<number, string> = {
+  0: "bg-green-100 text-green-800",
+  1: "bg-yellow-100 text-yellow-700",
+  2: "bg-purple-100 text-purple-800",
+};
 
-  const marketId = currentMarket ? currentMarket[0] : undefined;
-  const marketInfo = currentMarket ? currentMarket[1] : undefined;
+export default function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const marketIdNum = Number(id);
+  const marketId = !isNaN(marketIdNum) && marketIdNum > 0 ? BigInt(marketIdNum) : undefined;
+
+  const { address } = useAccount();
+  const { market: marketInfo, isLoading } = useMarketById(marketId);
   const bracketTotals = useBracketTotals(marketId);
 
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
+  const [question, setQuestion] = useState("");
 
-  const hasMarket = marketInfo && marketInfo.expiry > 0n;
-  const state = hasMarket ? Number(marketInfo.state) : -1;
+  useEffect(() => {
+    if (id) setQuestion(getMarketQuestion(id));
+  }, [id]);
+
+  const hasMarket = !!marketInfo && marketInfo.expiry > 0n;
+  const state = hasMarket ? marketInfo.state : -1;
   const isOpen = state === 0;
   const isResolved = state === 2;
   const totalPool = hasMarket ? marketInfo.totalPool : 0n;
   const expiry = hasMarket ? marketInfo.expiry : 0n;
   const expiryDate = expiry > 0n ? new Date(Number(expiry) * 1000) : null;
+  const isExpiredOnChain = isOpen && expiry > 0n && BigInt(Math.floor(Date.now() / 1000)) >= expiry;
+  const displayState = isExpiredOnChain ? "expired" : state;
 
-  const stateColors: Record<number, string> = {
-    0: "bg-green-100 text-green-800",
-    1: "bg-yellow-100 text-yellow-700",
-    2: "bg-purple-100 text-purple-800",
-  };
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isConnected || !newComment.trim()) return;
-    const comment: Comment = {
-      id: Date.now().toString(),
-      author: `${address?.slice(0, 6)}…${address?.slice(-4)}`,
-      authorAddress: address ?? "0x0000…0000",
-      content: newComment,
-      timestamp: new Date().toISOString(),
-    };
-    setComments([comment, ...comments]);
-    setNewComment("");
-  };
-
-  const formatCommentTime = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
-    const m = Math.floor(diff / 60000);
-    const h = Math.floor(diff / 3600000);
-    const d = Math.floor(diff / 86400000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    if (h < 24) return `${h}h ago`;
-    return `${d}d ago`;
-  };
+  if (!marketId) {
+    return (
+      <main className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-semibold mb-2">Invalid market ID</h1>
+          <Link href="/" className="inline-flex items-center gap-2 text-[#2563eb] no-underline">
+            <ArrowLeft size={16} /> Back to Markets
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   if (isLoading) {
     return (
       <main className="max-w-[1200px] mx-auto px-4 py-8">
-        <div className="text-center py-12 text-[#64748b]">Loading market data from chain…</div>
+        <div className="text-center py-12 text-[#64748b]">Loading market…</div>
       </main>
     );
   }
@@ -101,86 +92,124 @@ export default function MarketDetailPage() {
     return (
       <main className="max-w-[1200px] mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <h1 className="text-2xl font-semibold mb-2">No active market</h1>
-          <p className="text-[#64748b] mb-4">No market has been created yet.</p>
+          <h1 className="text-2xl font-semibold mb-2">Market not found</h1>
+          <p className="text-[#64748b] mb-4">Market #{id} does not exist on-chain.</p>
           <Link href="/" className="inline-flex items-center gap-2 text-[#2563eb] no-underline">
-            <ArrowLeft size={16} /> Back to Home
+            <ArrowLeft size={16} /> Back to Markets
           </Link>
         </div>
       </main>
     );
   }
 
+  const t1 = Number(marketInfo.threshold1);
+  const t2 = Number(marketInfo.threshold2);
+
   return (
     <main className="max-w-[1200px] mx-auto px-4 py-8">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] mb-6 no-underline"
+        className="inline-flex items-center gap-2 text-[#64748b] no-underline mb-6 hover:text-[#0f172a] transition-colors text-sm"
       >
-        <ArrowLeft size={16} />
-        Back to Markets
+        <ArrowLeft size={16} /> All Markets
       </Link>
 
-      {/* Market Header */}
-      <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6 mb-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-semibold text-[#0f172a]">
-                BTC Price Movement Market {marketId !== undefined ? `#${marketId.toString()}` : ""}
-              </h1>
-              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${stateColors[state] ?? ""}`}>
-                {MarketStateLabel[state] ?? "Unknown"}
-              </span>
-            </div>
-            <p className="text-[#475569]">
-              Predict how much BTC will move by expiry — direction doesn't matter, only the magnitude counts.
-              {isResolved && (
-                <span className="ml-2 text-purple-700 font-medium">
-                  Winner: {getBracketLabel(marketInfo.winningBracket, marketInfo.threshold1, marketInfo.threshold2)}
-                </span>
-              )}
-            </p>
-          </div>
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <h1 className="text-2xl font-semibold text-[#0f172a]">
+            {question || `Will BTC price move within thresholds? — Market #${id}`}
+          </h1>
+          <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+            displayState === "expired" ? "bg-orange-100 text-orange-700" : STATE_COLORS[state] ?? ""
+          }`}>
+            {displayState === "expired" ? "Expired — Awaiting Resolution" : (MarketStateLabel[state] ?? "Unknown")}
+          </span>
         </div>
+        <p className="text-[#64748b] text-sm">
+          Market #{id} · Predict the magnitude of BTC price movement and earn RBTC
+        </p>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-[rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-[#64748b]" />
-            <div>
-              <p className="text-xs text-[#64748b]">{isOpen ? "Time Remaining" : "Status"}</p>
-              <p className="text-sm font-semibold text-[#0f172a]">
-                {isOpen ? <CountdownTimer expiry={expiry} /> : MarketStateLabel[state]}
-              </p>
-            </div>
-          </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
+          <p className="text-xs text-[#64748b] mb-1">Start Price</p>
+          <p className="font-semibold text-[#0f172a]">{formatPrice(marketInfo.startPrice)}</p>
+        </div>
+        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
+          <p className="text-xs text-[#64748b] mb-1">Total Pool</p>
+          <p className="font-semibold text-[#0f172a]">{formatRbtc(totalPool)}</p>
+        </div>
+        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
+          <p className="text-xs text-[#64748b] mb-1">{isOpen ? "Expires In" : "Expiry Date"}</p>
+          <p className="font-semibold text-[#0f172a] flex items-center gap-1">
+            <Clock size={14} className="text-[#64748b]" />
+            {isOpen
+              ? <CountdownTimer expiry={expiry} />
+              : (expiryDate ? expiryDate.toLocaleDateString() : "—")}
+          </p>
+        </div>
+        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
+          <p className="text-xs text-[#64748b] mb-1">{isResolved ? "End Price" : "Thresholds"}</p>
+          <p className="font-semibold text-[#0f172a]">
+            {isResolved ? formatPrice(marketInfo.endPrice) : `${t1}% / ${t2}%`}
+          </p>
+        </div>
+      </div>
+
+      {/* Resolution info box */}
+      <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4 mb-6 bg-[rgba(99,102,241,0.03)]">
+        <div className="flex items-start gap-2">
+          <Info size={16} className="text-[#6366f1] mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-[#64748b]">Start Price</p>
-            <p className="text-sm font-semibold text-[#0f172a]">{formatPrice(marketInfo.startPrice)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-[#64748b]">
-              {isResolved ? "End Price" : "Total Pool"}
+            <p className="text-sm font-semibold text-[#0f172a] mb-2">How this market resolves</p>
+            <p className="text-sm text-[#475569] mb-2">
+              At expiry the BTC oracle price is compared to the start price of{" "}
+              <strong>{formatPrice(marketInfo.startPrice)}</strong>. The absolute percentage move (up or down)
+              determines which bracket wins:
             </p>
-            <p className="text-sm font-semibold text-[#0f172a]">
-              {isResolved ? formatPrice(marketInfo.endPrice) : formatRbtc(totalPool)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-[#64748b]">Expiry</p>
-            <p className="text-sm font-semibold text-[#0f172a]">
-              {expiryDate?.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) ?? "—"}
+            <ul className="space-y-1 text-sm text-[#475569]">
+              <li>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#6366f1] mr-2" />
+                <strong>Bracket 0</strong> — move &lt; {t1}% → resolves YES for this bracket
+              </li>
+              <li>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] mr-2" />
+                <strong>Bracket 1</strong> — move between {t1}% and {t2}% → resolves YES for this bracket
+              </li>
+              <li>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#10b981] mr-2" />
+                <strong>Bracket 2</strong> — move &gt; {t2}% → resolves YES for this bracket
+              </li>
+            </ul>
+            <p className="text-xs text-[#94a3b8] mt-2">
+              Stakers in the winning bracket split the entire pool proportionally. All other stakes are lost.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Bracket Distribution + Staking Chart + Trade Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2 border border-[rgba(15,23,42,0.08)] rounded-xl p-6 space-y-6">
-          {/* Bracket bars */}
-          <div>
-            <h3 className="text-sm font-medium text-[#64748b] mb-3">Bracket Distribution</h3>
+      {/* Resolved result banner */}
+      {isResolved && (
+        <div className="border border-green-200 bg-green-50 rounded-xl p-4 mb-6">
+          <p className="text-sm font-semibold text-green-800 mb-1">Market Resolved</p>
+          <p className="text-sm text-green-700">
+            End price: <strong>{formatPrice(marketInfo.endPrice)}</strong> ·{" "}
+            Winning bracket: <strong>{getBracketLabel(marketInfo.winningBracket, marketInfo.threshold1, marketInfo.threshold2)}</strong>
+          </p>
+        </div>
+      )}
+
+      {/* Main layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Left: brackets + chart */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Bracket breakdown */}
+          <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-5">
+            <p className="text-sm font-semibold text-[#0f172a] mb-4">Bracket Stakes</p>
             <div className="space-y-3">
               {([0, 1, 2] as const).map((b) => {
                 const label = getBracketLabel(b, marketInfo.threshold1, marketInfo.threshold2);
@@ -193,9 +222,9 @@ export default function MarketDetailPage() {
                       <span className={`font-medium ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
                         {label} {isWinner && "🏆"}
                       </span>
-                      <span className="text-[#64748b]">{formatRbtc(total)} ({pct}%)</span>
+                      <span className="text-[#64748b] text-xs">{formatRbtc(total)} ({pct}%)</span>
                     </div>
-                    <div className="h-2.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
+                    <div className="h-2 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${isWinner ? "bg-green-500" : "bg-[#6366f1]"}`}
                         style={{ width: `${pct}%` }}
@@ -207,72 +236,21 @@ export default function MarketDetailPage() {
             </div>
           </div>
 
-          {/* Staking activity chart */}
-          <div className="border-t border-[rgba(15,23,42,0.08)] pt-4">
+          {/* Staking chart */}
+          <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-5">
+            <p className="text-sm font-semibold text-[#0f172a] mb-4">Staking Activity</p>
             <Chart
               marketId={marketId}
               threshold1={marketInfo.threshold1}
               threshold2={marketInfo.threshold2}
+              userAddress={address}
             />
           </div>
         </div>
 
-        <div className="space-y-4">
-          <TradePanel />
-        </div>
-      </div>
-
-      {/* Comments Section */}
-      <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <MessageSquare size={20} className="text-[#0f172a]" />
-          <h2 className="text-lg font-semibold text-[#0f172a]">Comments</h2>
-          <span className="text-sm text-[#64748b]">({comments.length})</span>
-        </div>
-
-        <form onSubmit={handleCommentSubmit} className="mb-6">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={isConnected ? "Add a comment…" : "Connect wallet to comment"}
-              disabled={!isConnected}
-              className="flex-1 px-4 py-2 border border-[rgba(15,23,42,0.08)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f172a] disabled:bg-[rgba(15,23,42,0.04)] disabled:cursor-not-allowed"
-            />
-            <button
-            title="submit"
-              type="submit"
-              disabled={!isConnected || !newComment.trim()}
-              className="px-4 py-2 bg-[#0f172a] text-white rounded-lg hover:bg-[#0b1324] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send size={18} />
-            </button>
-          </div>
-        </form>
-
-        <div className="space-y-4">
-          {comments.length === 0 ? (
-            <p className="text-sm text-[#64748b] text-center py-8">No comments yet. Be the first to comment!</p>
-          ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="pb-4 border-b border-[rgba(15,23,42,0.08)] last:border-0 last:pb-0">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[rgba(15,23,42,0.08)] flex items-center justify-center">
-                      <span className="text-xs font-semibold text-[#0f172a]">{comment.author[0].toUpperCase()}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#0f172a]">{comment.author}</p>
-                      <p className="text-xs text-[#64748b]">{comment.authorAddress}</p>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-[#0f172a] mb-1">{comment.content}</p>
-                <p className="text-xs text-[#64748b]">{formatCommentTime(comment.timestamp)}</p>
-              </div>
-            ))
-          )}
+        {/* Right: trade panel */}
+        <div>
+          <TradePanel marketId={marketId} />
         </div>
       </div>
     </main>

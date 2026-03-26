@@ -1,4 +1,4 @@
-[dotenv@17.3.1] injecting env (3) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+
 // Sources flattened with hardhat v2.28.6 https://hardhat.org
 
 // SPDX-License-Identifier: MIT
@@ -303,38 +303,46 @@ contract RangeZone is ReentrancyGuard {
         uint256 totalPool;
         uint8 winningBracket;
         MarketState state;
-        uint256 threshold1; // e.g. 3 means 0-3% is bracket 0
-        uint256 threshold2; // e.g. 7 means 3-7% is bracket 1, 7%+ is bracket 2
+        uint256 threshold1;
+        uint256 threshold2;
     }
 
-    Market public market;
     AggregatorV3Interface public priceFeed;
     address public owner;
-    uint256 public constant FEE = 5; // 5% protocol fee
+    uint256 public constant FEE = 5;
     uint256 public accumulatedFee;
     uint256 public marketCount;
 
-    mapping(uint256 => mapping(uint8 => mapping(address => uint256)))
-        public stakes;
+    mapping(uint256 => Market) public markets;
+    mapping(uint256 => mapping(uint8 => mapping(address => uint256))) public stakes;
     mapping(uint256 => mapping(uint8 => uint256)) public bracketTotals;
 
     event MarketCreated(
+        uint256 indexed marketId,
         int256 startPrice,
         uint256 expiry,
         uint256 threshold1,
         uint256 threshold2
     );
-    event Staked(address indexed user, uint8 bracket, uint256 amount);
-    event Resolved(uint8 winningBracket, int256 endPrice);
-    event Claimed(address indexed user, uint256 amount);
+    event Staked(
+        uint256 indexed marketId,
+        address indexed user,
+        uint8 bracket,
+        uint256 amount
+    );
+    event Resolved(
+        uint256 indexed marketId,
+        uint8 winningBracket,
+        int256 endPrice
+    );
+    event Claimed(
+        uint256 indexed marketId,
+        address indexed user,
+        uint256 amount
+    );
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
-        _;
-    }
-
-    modifier onlyState(MarketState _state) {
-        require(market.state == _state, "Invalid market state");
         _;
     }
 
@@ -343,18 +351,11 @@ contract RangeZone is ReentrancyGuard {
         owner = msg.sender;
     }
 
-    // Cretae market
     function createMarket(
         uint256 _duration,
         uint256 _threshold1,
         uint256 _threshold2
-    ) external {
-       require(
-        market.state == MarketState.Closed ||
-        market.state == MarketState.Resolved ||
-        market.expiry == 0,
-        "Market already active"
-    );
+    ) external onlyOwner {
         require(_threshold1 > 0, "Threshold1 must be greater than 0");
         require(
             _threshold2 > _threshold1,
@@ -365,7 +366,9 @@ contract RangeZone is ReentrancyGuard {
         require(price > 0, "Invalid price");
         require(updatedAt > 0, "Stale price");
         require(block.timestamp - updatedAt <= 24 hours, "Price too old");
-        market = Market({
+
+        marketCount++;
+        markets[marketCount] = Market({
             startPrice: price,
             endPrice: 0,
             expiry: block.timestamp + _duration,
@@ -375,85 +378,88 @@ contract RangeZone is ReentrancyGuard {
             threshold1: _threshold1,
             threshold2: _threshold2
         });
-        marketCount++;
-        emit MarketCreated(price, market.expiry, _threshold1, _threshold2);
+
+        emit MarketCreated(marketCount, price, markets[marketCount].expiry, _threshold1, _threshold2);
     }
 
-    // to stake
-    function stake(
-        uint8 _bracket
-    ) external payable onlyState(MarketState.Open) {
-        require(block.timestamp < market.expiry, "Market expired");
+    function stake(uint256 _marketId, uint8 _bracket) external payable {
+        Market storage m = markets[_marketId];
+        require(m.state == MarketState.Open, "Market not open");
+        require(block.timestamp < m.expiry, "Market expired");
         require(_bracket <= 2, "Invalid bracket");
         require(msg.value > 0, "No stake sent");
 
-        stakes[marketCount][_bracket][msg.sender] += msg.value;
-        bracketTotals[marketCount][_bracket] += msg.value;
-        market.totalPool += msg.value;
-        emit Staked(msg.sender, _bracket, msg.value);
+        stakes[_marketId][_bracket][msg.sender] += msg.value;
+        bracketTotals[_marketId][_bracket] += msg.value;
+        m.totalPool += msg.value;
+
+        emit Staked(_marketId, msg.sender, _bracket, msg.value);
     }
 
-    // resolve market
-    function resolve() external {
-    require(block.timestamp >= market.expiry, "Not yet expired");
-    require(market.state == MarketState.Open, "Already resolved");
-    require(market.startPrice > 0, "Invalid start price");
+    function resolve(uint256 _marketId) external {
+        Market storage m = markets[_marketId];
+        require(m.expiry > 0, "Market does not exist");
+        require(block.timestamp >= m.expiry, "Not yet expired");
+        require(m.state == MarketState.Open, "Already resolved");
+        require(m.startPrice > 0, "Invalid start price");
 
-    (, int256 endPrice, , uint256 updatedAt, ) = priceFeed.latestRoundData();
-    require(endPrice > 0, "Invalid end price");
-    require(updatedAt > 0, "Stale price");
-    require(block.timestamp - updatedAt <= 24 hours, "Price too old");
+        (, int256 endPrice, , uint256 updatedAt, ) = priceFeed.latestRoundData();
+        require(endPrice > 0, "Invalid end price");
+        require(updatedAt > 0, "Stale price");
+        require(block.timestamp - updatedAt <= 24 hours, "Price too old");
 
-    market.endPrice = endPrice;
-    market.state = MarketState.Resolved;
+        m.endPrice = endPrice;
+        m.state = MarketState.Resolved;
 
-    uint256 fee = (market.totalPool * FEE) / 100;
-    accumulatedFee += fee;
+        uint256 fee = (m.totalPool * FEE) / 100;
+        accumulatedFee += fee;
 
-    int256 diff = endPrice - market.startPrice;
-    if (diff < 0) diff = -diff;
-    uint256 pct = (uint256(diff) * 100) / uint256(market.startPrice);
+        int256 diff = endPrice - m.startPrice;
+        if (diff < 0) diff = -diff;
+        uint256 pct = (uint256(diff) * 100) / uint256(m.startPrice);
 
-    if (pct < market.threshold1) {
-        market.winningBracket = 0;
-    } else if (pct < market.threshold2) {
-        market.winningBracket = 1;
-    } else {
-        market.winningBracket = 2;
+        if (pct < m.threshold1) {
+            m.winningBracket = 0;
+        } else if (pct < m.threshold2) {
+            m.winningBracket = 1;
+        } else {
+            m.winningBracket = 2;
+        }
+
+        emit Resolved(_marketId, m.winningBracket, endPrice);
     }
-    emit Resolved(market.winningBracket, endPrice);
-}
 
-    // claim winnings
+    function claim(uint256 _marketId) external nonReentrant {
+        Market storage m = markets[_marketId];
+        require(m.state == MarketState.Resolved, "Market not resolved");
 
-    function claim() external onlyState(MarketState.Resolved) nonReentrant {
-        uint8 winner = market.winningBracket;
-        uint256 userStake = stakes[marketCount][winner][msg.sender];
+        uint8 winner = m.winningBracket;
+        uint256 userStake = stakes[_marketId][winner][msg.sender];
         require(userStake > 0, "Nothing to claim");
 
-        stakes[marketCount][winner][msg.sender] = 0;
+        stakes[_marketId][winner][msg.sender] = 0;
 
-        uint256 poolAfterFee = (market.totalPool * (100 - FEE)) / 100;
-        uint256 payout = (userStake * poolAfterFee) /
-            bracketTotals[marketCount][winner];
+        uint256 poolAfterFee = (m.totalPool * (100 - FEE)) / 100;
+        uint256 payout = (userStake * poolAfterFee) / bracketTotals[_marketId][winner];
 
         (bool sent, ) = msg.sender.call{value: payout}("");
         require(sent, "Transfer failed");
 
-        emit Claimed(msg.sender, payout);
+        emit Claimed(_marketId, msg.sender, payout);
     }
 
-    function getMarketInfo() external view returns (Market memory) {
-        return market;
+    function getMarket(uint256 _marketId) external view returns (Market memory) {
+        return markets[_marketId];
     }
 
-    // to withdraw winnings
+    function getCurrentMarket() external view returns (uint256 id, Market memory m) {
+        return (marketCount, markets[marketCount]);
+    }
+
     function withdrawFee() external onlyOwner {
         uint256 amount = accumulatedFee;
         require(amount > 0, "No fee to withdraw");
-
         accumulatedFee = 0;
-
         (bool sent, ) = owner.call{value: amount}("");
         require(sent, "Withdraw failed");
     }

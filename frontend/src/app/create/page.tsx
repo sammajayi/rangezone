@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useRouter } from "next/navigation";
-import { useCreateMarket, useContractOwner } from "../../hooks/useRangeZone";
+import { useCreateMarket, useContractOwner, useMarketCount } from "../../hooks/useRangeZone";
 
 const RSK_TESTNET_CHAIN_ID = 31;
 
@@ -22,6 +22,7 @@ export default function CreateMarketPage() {
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { data: owner } = useContractOwner();
+  const { data: marketCount } = useMarketCount();
   const { createMarket, isPending, isConfirming, isSuccess, error } = useCreateMarket();
 
   const isWrongNetwork = isConnected && chainId !== RSK_TESTNET_CHAIN_ID;
@@ -31,9 +32,14 @@ export default function CreateMarketPage() {
   const [duration, setDuration] = useState(DURATION_OPTIONS[3].seconds);
   const [threshold1, setThreshold1] = useState("3");
   const [threshold2, setThreshold2] = useState("7");
+  const [question, setQuestion] = useState("");
 
   useEffect(() => {
     if (isSuccess) {
+      const newId = (Number(marketCount ?? 0n) + 1).toString();
+      if (question.trim()) {
+        localStorage.setItem(`market_question_${newId}`, question.trim());
+      }
       setTimeout(() => router.push("/"), 2000);
     }
   }, [isSuccess]);
@@ -41,9 +47,10 @@ export default function CreateMarketPage() {
   const t1 = Number(threshold1);
   const t2 = Number(threshold2);
   const thresholdsValid = t1 > 0 && t2 > t1;
+  const questionValid = question.trim().length > 0;
 
   function handleNext() {
-    if (currentStep < 2) setCurrentStep(currentStep + 1);
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
   }
   function handleBack() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
@@ -70,9 +77,7 @@ export default function CreateMarketPage() {
     return (
       <main className="max-w-[720px] mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold mb-2">Create market</h1>
-        <p className="text-[#64748b]">Only the contract owner can create markets.</p>
-        <p className="text-xs text-[#94a3b8] mt-2">Owner: {owner}</p>
-        <p className="text-xs text-[#94a3b8]">Your address: {address}</p>
+        <p className="text-[#64748b]">Once we go live on mainnet, you'll be able to create markets.</p>
       </main>
     );
   }
@@ -99,7 +104,7 @@ export default function CreateMarketPage() {
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center">
-          {[1, 2].map((step, index) => (
+          {[1, 2, 3].map((step, index) => (
             <div key={step} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
                 <div
@@ -109,10 +114,13 @@ export default function CreateMarketPage() {
                 >
                   {step}
                 </div>
+                <span className="text-xs text-[#64748b] mt-1">
+                  {step === 1 ? "Duration" : step === 2 ? "Brackets" : "Question"}
+                </span>
               </div>
-              {index < 1 && (
+              {index < 2 && (
                 <div
-                  className={`h-1 flex-1 mx-2 transition-colors ${
+                  className={`h-1 flex-1 mx-2 mb-4 transition-colors ${
                     currentStep > step ? "bg-[#0f172a]" : "bg-[rgba(15,23,42,0.08)]"
                   }`}
                 />
@@ -161,7 +169,7 @@ export default function CreateMarketPage() {
           </div>
         )}
 
-        {/* Step 2: Thresholds + Confirm */}
+        {/* Step 2: Thresholds */}
         {currentStep === 2 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold mb-1">Price Movement Brackets</h2>
@@ -213,9 +221,54 @@ export default function CreateMarketPage() {
               <p className="text-sm text-red-600">Threshold 2 must be greater than Threshold 1, and both must be positive.</p>
             )}
 
+            <div className="pt-2 flex gap-3">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="border border-[rgba(15,23,42,0.12)] text-[#0f172a] px-4 py-2 rounded-lg font-semibold hover:bg-[rgba(15,23,42,0.04)]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!thresholdsValid}
+                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Question + Confirm */}
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-1">Market Question</h2>
+            <p className="text-sm text-[#64748b] mb-4">
+              Write a clear question that describes what this market is predicting. This will be displayed as the market title.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="question">
+                Market question
+              </label>
+              <input
+                id="question"
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder={`e.g. Will BTC be between ${threshold1}% and ${threshold2}% by ${selectedDurationLabel} from now?`}
+                className="w-full border border-[rgba(15,23,42,0.12)] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#6366f1] text-sm"
+                maxLength={120}
+              />
+              <p className="text-xs text-[#94a3b8] mt-1">{question.length}/120 characters</p>
+            </div>
+
             {/* Summary */}
             <div className="bg-[rgba(15,23,42,0.03)] rounded-lg p-4 text-sm space-y-1">
               <p className="font-semibold text-[#0f172a] mb-2">Market Summary</p>
+              <p className="text-[#64748b]">Question: <strong>{question || "—"}</strong></p>
               <p className="text-[#64748b]">Duration: <strong>{selectedDurationLabel}</strong></p>
               <p className="text-[#64748b]">Bracket 0: price moves &lt; {threshold1}%</p>
               <p className="text-[#64748b]">Bracket 1: price moves {threshold1}% – {threshold2}%</p>
@@ -245,7 +298,7 @@ export default function CreateMarketPage() {
               </button>
               <button
                 type="submit"
-                disabled={!thresholdsValid || isPending || isConfirming || isSuccess || isWrongNetwork}
+                disabled={!thresholdsValid || !questionValid || isPending || isConfirming || isSuccess || isWrongNetwork}
                 className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending || isConfirming ? "Creating…" : "Create Market"}

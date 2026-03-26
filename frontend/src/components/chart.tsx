@@ -10,7 +10,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import { useStakedEvents } from "../hooks/useRangeZone";
 import { getBracketLabel } from "../lib/rangeZoneContract";
@@ -19,9 +18,11 @@ interface ChartProps {
   marketId: bigint | undefined;
   threshold1: bigint;
   threshold2: bigint;
+  userAddress?: string;
 }
 
 const BRACKET_COLORS = ["#6366f1", "#f59e0b", "#10b981"];
+const USER_COLORS = ["#a5b4fc", "#fcd34d", "#6ee7b7"];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -37,14 +38,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-const Chart: React.FC<ChartProps> = ({ marketId, threshold1, threshold2 }) => {
-  const { points, isLoading } = useStakedEvents(marketId);
+const Chart: React.FC<ChartProps> = ({ marketId, threshold1, threshold2, userAddress }) => {
+  const { points, isLoading } = useStakedEvents(marketId, userAddress);
 
   const labels = [
     getBracketLabel(0, threshold1, threshold2),
     getBracketLabel(1, threshold1, threshold2),
     getBracketLabel(2, threshold1, threshold2),
   ];
+
+  const hasUserStakes = !!userAddress && points.some((p) => p.u0 > 0 || p.u1 > 0 || p.u2 > 0);
 
   if (isLoading) {
     return (
@@ -64,62 +67,71 @@ const Chart: React.FC<ChartProps> = ({ marketId, threshold1, threshold2 }) => {
   }
 
   return (
-    <div className="w-full" style={{ height: "280px" }}>
-      <p className="text-xs text-[#64748b] mb-2 font-medium">
-        Cumulative stakes per bracket over time (tRBTC)
-      </p>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.06)" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v) => `${v.toFixed(3)}`}
-            width={60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }}
-            formatter={(value) => (
-              <span style={{ color: "#0f172a" }}>{value}</span>
-            )}
-          />
-          <Line
-            type="monotone"
-            dataKey="b0"
-            name={labels[0]}
-            stroke={BRACKET_COLORS[0]}
-            strokeWidth={2}
-            dot={{ r: 3, fill: BRACKET_COLORS[0] }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="b1"
-            name={labels[1]}
-            stroke={BRACKET_COLORS[1]}
-            strokeWidth={2}
-            dot={{ r: 3, fill: BRACKET_COLORS[1] }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="b2"
-            name={labels[2]}
-            stroke={BRACKET_COLORS[2]}
-            strokeWidth={2}
-            dot={{ r: 3, fill: BRACKET_COLORS[2] }}
-            activeDot={{ r: 5 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="w-full space-y-2">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-[#64748b] mb-1">
+        <span className="flex items-center gap-1">
+          <span className="w-4 h-0.5 bg-[#6366f1] inline-block rounded" />
+          All stakers (cumulative)
+        </span>
+        {hasUserStakes && (
+          <span className="flex items-center gap-1">
+            <span className="w-4 h-0.5 bg-[#a5b4fc] inline-block rounded" style={{ borderTop: "2px dashed #a5b4fc", height: 0 }} />
+            Your stakes
+          </span>
+        )}
+      </div>
+      <div style={{ height: "280px" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.06)" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `${v.toFixed(3)}`}
+              width={60}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
+              formatter={(value) => <span style={{ color: "#0f172a" }}>{value}</span>}
+            />
+
+            {([0, 1, 2] as const).map((b) => (
+              <Line
+                key={`b${b}`}
+                type="monotone"
+                dataKey={`b${b}`}
+                name={labels[b]}
+                stroke={BRACKET_COLORS[b]}
+                strokeWidth={2}
+                dot={{ r: 3, fill: BRACKET_COLORS[b] }}
+                activeDot={{ r: 5 }}
+              />
+            ))}
+
+            {hasUserStakes && ([0, 1, 2] as const).map((b) => (
+              <Line
+                key={`u${b}`}
+                type="monotone"
+                dataKey={`u${b}`}
+                name={`Yours: ${labels[b]}`}
+                stroke={USER_COLORS[b]}
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useAllMarkets, MarketEntry } from "../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../lib/rangeZoneContract";
 
+function getMarketQuestion(marketId: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(`market_question_${marketId}`) ?? "";
+}
+
 function CountdownTimer({ expiry }: { expiry: bigint }) {
   const [time, setTime] = useState("");
   useEffect(() => {
@@ -31,12 +36,27 @@ const STATE_COLORS: Record<number, string> = {
 
 function MarketCard({ entry }: { entry: MarketEntry }) {
   const { id, market, bracketTotals } = entry;
+  const [question, setQuestion] = useState("");
+  const [isExpiredOnChain, setIsExpiredOnChain] = useState(false);
+  useEffect(() => {
+    setQuestion(getMarketQuestion(id.toString()));
+    const check = () => {
+      if (!market) return;
+      const expired = market.state === 0 && market.expiry > 0n && BigInt(Math.floor(Date.now() / 1000)) >= market.expiry;
+      setIsExpiredOnChain(expired);
+    };
+    check();
+    const t = setInterval(check, 5000);
+    return () => clearInterval(t);
+  }, [id, market]);
+
   if (!market) return null;
 
   const state = market.state;
   const totalPool = market.totalPool;
   const isOpen = state === 0;
   const isResolved = state === 2;
+  const displayState = isExpiredOnChain ? "expired" : state;
 
   return (
     <div className="border border-[rgba(15,23,42,0.08)] rounded-xl overflow-hidden">
@@ -45,22 +65,33 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h2 className="text-lg font-semibold text-[#0f172a]">
-              BTC Market #{id.toString()}
+              {question || `BTC Market #${id.toString()}`}
             </h2>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${STATE_COLORS[state] ?? ""}`}>
-              {MarketStateLabel[state] ?? "Unknown"}
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+              displayState === "expired" ? "bg-orange-100 text-orange-700" : STATE_COLORS[state] ?? ""
+            }`}>
+              {displayState === "expired" ? "Expired" : (MarketStateLabel[state] ?? "Unknown")}
             </span>
           </div>
           <p className="text-sm text-[#64748b]">
             Predict how much BTC will move by expiry — direction doesn't matter, only magnitude.
           </p>
         </div>
-        <Link
-          href={`/market/${id.toString()}`}
-          className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm"
-        >
-          View &amp; Trade →
-        </Link>
+        {displayState === "expired" || isResolved ? (
+          <Link
+            href={`/market/${id.toString()}`}
+            className="inline-flex items-center gap-2 bg-[rgba(15,23,42,0.08)] text-[#64748b] no-underline px-4 py-2 rounded-lg font-semibold text-sm"
+          >
+            View Results →
+          </Link>
+        ) : (
+          <Link
+            href={`/market/${id.toString()}`}
+            className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm"
+          >
+            View &amp; Trade →
+          </Link>
+        )}
       </div>
 
       {/* Stats */}

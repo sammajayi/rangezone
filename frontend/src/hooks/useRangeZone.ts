@@ -16,6 +16,32 @@ export function useCurrentMarket() {
   });
 }
 
+export function useMarketById(marketId: bigint | undefined) {
+  const { data, isLoading, refetch } = useReadContract({
+    address: RANGE_ZONE_ADDRESS,
+    abi: RANGE_ZONE_ABI,
+    functionName: "getMarket",
+    args: marketId !== undefined ? [marketId] : undefined,
+    chainId: RSK_TESTNET_CHAIN_ID,
+    query: { enabled: marketId !== undefined && marketId > 0n },
+  });
+
+  const market = data
+    ? {
+        startPrice: (data as any).startPrice ?? (data as any)[0],
+        endPrice: (data as any).endPrice ?? (data as any)[1],
+        expiry: (data as any).expiry ?? (data as any)[2],
+        totalPool: (data as any).totalPool ?? (data as any)[3],
+        winningBracket: Number((data as any).winningBracket ?? (data as any)[4]),
+        state: Number((data as any).state ?? (data as any)[5]),
+        threshold1: (data as any).threshold1 ?? (data as any)[6],
+        threshold2: (data as any).threshold2 ?? (data as any)[7],
+      }
+    : undefined;
+
+  return { market, isLoading, refetch };
+}
+
 export function useMarketCount() {
   return useReadContract({
     address: RANGE_ZONE_ADDRESS,
@@ -175,10 +201,13 @@ export interface StakePoint {
   b0: number;
   b1: number;
   b2: number;
+  u0: number;
+  u1: number;
+  u2: number;
   label: string;
 }
 
-export function useStakedEvents(marketId: bigint | undefined) {
+export function useStakedEvents(marketId: bigint | undefined, userAddress?: string) {
   const [points, setPoints] = useState<StakePoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const client = usePublicClient({ chainId: RSK_TESTNET_CHAIN_ID });
@@ -203,22 +232,27 @@ export function useStakedEvents(marketId: bigint | undefined) {
 
         if (cancelled) return;
 
-        let b0 = 0;
-        let b1 = 0;
-        let b2 = 0;
+        let b0 = 0, b1 = 0, b2 = 0;
+        let u0 = 0, u1 = 0, u2 = 0;
+        const normalizedUser = userAddress?.toLowerCase();
 
         const pts: StakePoint[] = logs.map((log, i) => {
           const amt = Number(log.args.amount ?? 0n) / 1e18;
           const bracket = Number(log.args.bracket ?? 0);
-          if (bracket === 0) b0 += amt;
-          else if (bracket === 1) b1 += amt;
-          else b2 += amt;
+          const isUser = normalizedUser && (log.args.user as string)?.toLowerCase() === normalizedUser;
+
+          if (bracket === 0) { b0 += amt; if (isUser) u0 += amt; }
+          else if (bracket === 1) { b1 += amt; if (isUser) u1 += amt; }
+          else { b2 += amt; if (isUser) u2 += amt; }
 
           return {
             index: i + 1,
             b0: Number(b0.toFixed(6)),
             b1: Number(b1.toFixed(6)),
             b2: Number(b2.toFixed(6)),
+            u0: Number(u0.toFixed(6)),
+            u1: Number(u1.toFixed(6)),
+            u2: Number(u2.toFixed(6)),
             label: `#${i + 1}`,
           };
         });
@@ -232,9 +266,137 @@ export function useStakedEvents(marketId: bigint | undefined) {
     })();
 
     return () => { cancelled = true; };
-  }, [marketId, client]);
+  }, [marketId, userAddress, client]);
 
   return { points, isLoading };
+}
+
+export function useUserStakedMarkets(userAddress: `0x${string}` | undefined) {
+  const [marketIds, setMarketIds] = useState<bigint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const client = usePublicClient({ chainId: RSK_TESTNET_CHAIN_ID });
+
+  useEffect(() => {
+    if (!userAddress || !client) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const logs = await client.getLogs({
+          address: RANGE_ZONE_ADDRESS,
+          event: parseAbiItem(
+            "event Staked(uint256 indexed marketId, address indexed user, uint8 bracket, uint256 amount)"
+          ),
+          args: { user: userAddress },
+          fromBlock: 0n,
+          toBlock: "latest",
+        });
+
+        if (cancelled) return;
+
+        const seen = new Set<string>();
+        const ids: bigint[] = [];
+        for (const log of logs) {
+          const id = log.args.marketId as bigint;
+          const key = id.toString();
+          if (!seen.has(key)) {
+            seen.add(key);
+            ids.push(id);
+          }
+        }
+        ids.sort((a, b) => (a > b ? -1 : 1));
+        setMarketIds(ids);
+      } catch (e) {
+        console.error("useUserStakedMarkets error:", e);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [userAddress, client]);
+
+  return { marketIds, isLoading };
+}
+
+export interface UserTransaction {
+  type: "stake" | "claim";
+  marketId: bigint;
+  bracket?: number;
+  amount: bigint;
+  blockNumber: bigint;
+  txHash: `0x${string}`;
+}
+
+export function useUserTransactions(userAddress: `0x${string}` | undefined) {
+  const [transactions, setTransactions] = useState<UserTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const client = usePublicClient({ chainId: RSK_TESTNET_CHAIN_ID });
+
+  useEffect(() => {
+    if (!userAddress || !client) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const [stakeLogs, claimLogs] = await Promise.all([
+          client.getLogs({
+            address: RANGE_ZONE_ADDRESS,
+            event: parseAbiItem(
+              "event Staked(uint256 indexed marketId, address indexed user, uint8 bracket, uint256 amount)"
+            ),
+            args: { user: userAddress },
+            fromBlock: 0n,
+            toBlock: "latest",
+          }),
+          client.getLogs({
+            address: RANGE_ZONE_ADDRESS,
+            event: parseAbiItem(
+              "event Claimed(uint256 indexed marketId, address indexed user, uint256 amount)"
+            ),
+            args: { user: userAddress },
+            fromBlock: 0n,
+            toBlock: "latest",
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        const txs: UserTransaction[] = [
+          ...stakeLogs.map((l) => ({
+            type: "stake" as const,
+            marketId: l.args.marketId as bigint,
+            bracket: Number(l.args.bracket ?? 0),
+            amount: l.args.amount as bigint,
+            blockNumber: l.blockNumber ?? 0n,
+            txHash: l.transactionHash as `0x${string}`,
+          })),
+          ...claimLogs.map((l) => ({
+            type: "claim" as const,
+            marketId: l.args.marketId as bigint,
+            amount: l.args.amount as bigint,
+            blockNumber: l.blockNumber ?? 0n,
+            txHash: l.transactionHash as `0x${string}`,
+          })),
+        ];
+
+        txs.sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : 1));
+        setTransactions(txs);
+      } catch (e) {
+        console.error("useUserTransactions error:", e);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [userAddress, client]);
+
+  return { transactions, isLoading };
 }
 
 export function useStake() {

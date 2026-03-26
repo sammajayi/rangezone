@@ -104,7 +104,3 @@ npx hardhat test
 ```bash
 npx hardhat run scripts/deploy.ts --network rskTestnet
 ```
-
-
-RangeZone deployed to: 0x93fa2048f527e977Ba6BAC61ee0F029BfE66e46a
-Using Mock Price Feed: 0xf1E6984E475EfacD31FcD6e0BF968EC2Ddc9d8DB
