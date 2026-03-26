@@ -36,6 +36,19 @@ export function ProfileControls({ variant }: ProfileControlsProps) {
                 const ready = mounted;
                 const connected = ready && account && chain && !chain.unsupported;
 
+                if (!ready) {
+                    return (
+                        <button
+                            type="button"
+                            disabled
+                            aria-hidden="true"
+                            className={`inline-flex items-center justify-center px-4 py-2 rounded-full bg-[#0f172a] text-white text-sm font-semibold opacity-0 pointer-events-none ${variant === "mobile" ? "w-full" : ""}`}
+                        >
+                            Sign in
+                        </button>
+                    );
+                }
+
                 if (!connected) {
                     return (
                         <button

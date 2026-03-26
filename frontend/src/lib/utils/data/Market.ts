@@ -1,5 +1,5 @@
 // src/lib/markets.ts
-import { Market } from "../../../src/types/market";
+import { Market } from "../../../types/market";
 
 export const markets: Market[] = [
   {

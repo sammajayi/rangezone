@@ -1,432 +1,269 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { markets } from "../../../../lib/utils/data/Market";
-import { Market } from "../../../types/market";
-import { Clock, ArrowLeft, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare, Send } from "lucide-react";
 import { useAccount } from "wagmi";
 import Chart from "../../../components/chart";
-import TradePanel from "../../../components/tradePanel";
-import { BrowserProvider, Contract } from "ethers";
+import { TradePanel } from "../../../components/tradePanel";
+import { useMarketInfo, useMarketCount, useBracketTotals } from "../../../hooks/useRangeZone";
+import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../../../lib/rangeZoneContract";
 
 interface Comment {
-    id: string;
-    author: string;
-    authorAddress: string;
-    content: string;
-    timestamp: string;
-    vote?: "yes" | "no";
+  id: string;
+  author: string;
+  authorAddress: string;
+  content: string;
+  timestamp: string;
+}
+
+function CountdownTimer({ expiry }: { expiry: bigint }) {
+  const [time, setTime] = useState("");
+  useEffect(() => {
+    const update = () => {
+      const diff = Number(expiry) * 1000 - Date.now();
+      if (diff <= 0) { setTime("Expired"); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      if (d > 0) setTime(`${d}d ${h}h ${m}m`);
+      else if (h > 0) setTime(`${h}h ${m}m ${s}s`);
+      else if (m > 0) setTime(`${m}m ${s}s`);
+      else setTime(`${s}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [expiry]);
+  return <span>{time}</span>;
 }
 
 export default function MarketDetailPage() {
-    const params = useParams();
-    const router = useRouter();
-    const { address, isConnected } = useAccount();
-    const [market, setMarket] = useState<Market | null>(null);
-    const [timeRemaining, setTimeRemaining] = useState<string>("");
-    const [isExpired, setIsExpired] = useState(false);
-    const [comments, setComments] = useState<Comment[]>([]);
-    const [newComment, setNewComment] = useState("");
-    const [lastVote, setLastVote] = useState<"yes" | "no" | null>(null);
-    const [tradeEvent, setTradeEvent] = useState<{ side: "yes" | "no"; amount: number } | null>(null);
-    const voteTimerRef = useRef<number | null>(null);
+  const { address, isConnected } = useAccount();
+  const { data: marketInfo, isLoading } = useMarketInfo();
+  const { data: marketCount } = useMarketCount();
+  const bracketTotals = useBracketTotals(marketCount as bigint | undefined);
 
-    useEffect(() => {
-        const foundMarket = markets.find((m) => m.id === params.id);
-        if (foundMarket) {
-            setMarket(foundMarket);
-        }
-    }, [params.id]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
 
-    useEffect(() => {
-        if (!market) return;
+  const hasMarket = marketInfo && marketInfo.expiry > 0n;
+  const state = hasMarket ? Number(marketInfo.state) : -1;
+  const isOpen = state === 0;
+  const isResolved = state === 2;
+  const totalPool = hasMarket ? marketInfo.totalPool : 0n;
+  const expiry = hasMarket ? marketInfo.expiry : 0n;
+  const expiryDate = expiry > 0n ? new Date(Number(expiry) * 1000) : null;
 
-        const updateTimer = () => {
-            const now = new Date().getTime();
-            const endDate = new Date(market.endDate).getTime();
-            const diff = endDate - now;
+  const stateColors: Record<number, string> = {
+    0: "bg-green-100 text-green-800",
+    1: "bg-yellow-100 text-yellow-700",
+    2: "bg-purple-100 text-purple-800",
+  };
 
-            if (diff <= 0) {
-                setIsExpired(true);
-                setTimeRemaining("Market Closed");
-                return;
-            }
-
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            if (days > 0) {
-                setTimeRemaining(`${days} days, ${hours} hours, ${minutes} minutes`);
-            } else if (hours > 0) {
-                setTimeRemaining(`${hours} hours, ${minutes} minutes, ${seconds} seconds`);
-            } else if (minutes > 0) {
-                setTimeRemaining(`${minutes} minutes, ${seconds} seconds`);
-            } else {
-                setTimeRemaining(`${seconds} seconds`);
-            }
-        };
-
-        updateTimer();
-        const interval = setInterval(updateTimer, 1000);
-
-        return () => clearInterval(interval);
-    }, [market]);
-
-    // Helper: optional on-chain call using ethers if market contains contract info.
-    const callOnChain = async (contractAddress?: string, abi?: any, method?: string, args: any[] = []) => {
-        if (!contractAddress || !abi || !method) return null;
-        try {
-            if (!(window as any).ethereum) throw new Error("No wallet provider");
-            const provider = new BrowserProvider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            const signer = await provider.getSigner();
-            const contract = new Contract(contractAddress, abi, signer);
-            const tx = await contract[method](...args);
-            await tx.wait();
-            return tx;
-        } catch (err) {
-            console.error("on-chain call failed", err);
-            throw err;
-        }
+  const handleCommentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isConnected || !newComment.trim()) return;
+    const comment: Comment = {
+      id: Date.now().toString(),
+      author: `${address?.slice(0, 6)}…${address?.slice(-4)}`,
+      authorAddress: address ?? "0x0000…0000",
+      content: newComment,
+      timestamp: new Date().toISOString(),
     };
+    setComments([comment, ...comments]);
+    setNewComment("");
+  };
 
-    const handleVote = async (vote: "yes" | "no") => {
-        if (!isConnected) {
-            alert("Please connect your wallet to vote");
-            return;
-        }
+  const formatCommentTime = (ts: string) => {
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    return `${d}d ago`;
+  };
 
-        // Attempt on-chain vote if contract info is present on market object
-        try {
-            if (market?.voteContractAddress && market?.voteAbi) {
-                // Example ABI/method assumptions: vote(marketId: string, support: bool)
-                await callOnChain(market.voteContractAddress, market.voteAbi, "vote", [market.id, vote === "yes"]);
-            }
-        } catch (e) {
-            // on-chain failed — continue with local update but inform user
-            console.warn("On-chain vote failed, falling back to local UI update");
-        }
-
-        // set visual/chart state
-        setLastVote(vote);
-        if (voteTimerRef.current) {
-            window.clearTimeout(voteTimerRef.current);
-        }
-        voteTimerRef.current = window.setTimeout(() => setLastVote(null), 2000);
-
-        // TODO: Implement persistent vote recording (server or chain)
-        console.log(`Voted ${vote} for market ${market?.id}`);
-    };
-
-    const handleTrade = async (side: "yes" | "no", amount: number) => {
-        if (!market) return;
-
-        // Attempt on-chain trade if info present
-        try {
-            if (market?.tradeContractAddress && market?.tradeAbi) {
-                // Example ABI/method assumptions: trade(marketId: string, isYes: bool, amount: uint256)
-                // Convert amount to wei if appropriate - this depends on your contract/token.
-                const amtArg = BigInt(Math.max(1, Math.floor(amount)));
-                await callOnChain(market.tradeContractAddress, market.tradeAbi, "trade", [market.id, side === "yes", amtArg]);
-            }
-        } catch (e) {
-            console.warn("On-chain trade failed, falling back to local UI update");
-        }
-
-        // Update chart via tradeEvent prop
-        setTradeEvent({ side, amount });
-        // clear tradeEvent after slight delay so chart effect can trigger repeatedly
-        setTimeout(() => setTradeEvent(null), 400);
-
-        // locally update market recent trades and volume
-        const trade = { time: new Date().toISOString(), amount };
-        const updatedMarket = {
-            ...market,
-            trades: [trade, ...(market.trades || [])],
-            volume: (market.volume || 0) + amount,
-        } as Market;
-
-        setMarket(updatedMarket);
-    };
-
-    const handleCommentSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isConnected) {
-            alert("Please connect your wallet to comment");
-            return;
-        }
-        if (!newComment.trim()) return;
-
-        const comment: Comment = {
-            id: Date.now().toString(),
-            author: "You",
-            authorAddress: address || "0x0000...0000",
-            content: newComment,
-            timestamp: new Date().toISOString(),
-        };
-
-        setComments([comment, ...comments]);
-        setNewComment("");
-    };
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    };
-
-    const formatCommentTime = (timestamp: string) => {
-        const now = new Date();
-        const commentTime = new Date(timestamp);
-        const diffMs = now.getTime() - commentTime.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return "just now";
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return formatDate(timestamp);
-    };
-
-    if (!market) {
-        return (
-            <main className="max-w-[1200px] mx-auto px-4 py-8">
-                <div className="text-center py-12">
-                    <h1 className="text-2xl font-semibold mb-2">Market not found</h1>
-                    <p className="text-[#64748b] mb-4">The market you're looking for doesn't exist.</p>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 text-[#2563eb] hover:text-[#1d4ed8] no-underline"
-                    >
-                        <ArrowLeft size={16} />
-                        Back to Markets
-                    </Link>
-                </div>
-            </main>
-        );
-    }
-
+  if (isLoading) {
     return (
-        <main className="max-w-[1200px] mx-auto px-4 py-8">
-            <Link
-                href="/market"
-                className="inline-flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] mb-6 no-underline"
-            >
-                <ArrowLeft size={16} />
-                Back to Markets
-            </Link>
-
-            {/* Market Header */}
-            <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6 mb-6">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                            <h1 className="text-2xl font-semibold text-[#0f172a]">{market.title}</h1>
-                            <span
-                                className={`text-xs px-2 py-1 rounded-full ${market.status === "open"
-                                        ? "bg-[rgba(16,185,129,0.12)] text-[#065f46]"
-                                        : "bg-[rgba(239,68,68,0.12)] text-[#7f1d1d]"
-                                    }`}
-                            >
-                                {market.status}
-                            </span>
-                        </div>
-                        <p className="text-[#475569] text-base">{market.description}</p>
-                    </div>
-                </div>
-
-                {/* Timer and Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-[rgba(15,23,42,0.08)]">
-                    <div className="flex items-center gap-2">
-                        <Clock size={18} className="text-[#64748b]" aria-hidden="true" />
-                        <div>
-                            <p className="text-xs text-[#64748b]">Time Remaining</p>
-                            <p className="text-sm font-semibold text-[#0f172a]">
-                                {isExpired ? "Closed" : timeRemaining}
-                            </p>
-                        </div>
-                    </div>
-                    <div>
-                        <p className="text-xs text-[#64748b]">End Date</p>
-                        <p className="text-sm font-semibold text-[#0f172a]">
-                            {formatDate(market.endDate)}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-[#64748b]">Volume</p>
-                        <p className="text-sm font-semibold text-[#0f172a]">
-                            {market.volume.toLocaleString()}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Market Details + Chart side-by-side */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 ">
-                <div className="lg:col-span-2 border border-[rgba(15,23,42,0.08)] rounded-xl p-6 ">
-                    <div className=" grid-rows-1 md:grid-cols-3 gap-4 ">
-
-                        <div className="md:col-span-1 flex items-stretch">
-                            <div className="w-full">
-                                <h3 className="text-sm text-[#64748b] mb-3">Live Market</h3>
-                                <Chart lastVote={lastVote} tradeEvent={tradeEvent} />
-                            </div>
-                        </div>
-
-
-                        <div className="md:col-span-2">
-                            <h2 className="text-lg font-semibold text-[#0f172a] mb-4">Market Details</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-sm text-[#64748b] mb-1">Start Date</p>
-                                    <p className="text-sm font-medium text-[#0f172a]">
-                                        {formatDate(market.startDate)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[#64748b] mb-1">End Date</p>
-                                    <p className="text-sm font-medium text-[#0f172a]">
-                                        {formatDate(market.endDate)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[#64748b] mb-1">Resolution Time</p>
-                                    <p className="text-sm font-medium text-[#0f172a]">
-                                        {market.resolutionTime ? formatDate(market.resolutionTime) : "TBD"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[#64748b] mb-1">Total Trades</p>
-                                    <p className="text-sm font-medium text-[#0f172a]">
-                                        {market.trades.length}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-
-                    </div>
-                </div>
-
-                <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6 space-y-4">
-                    {/* Trade panel */}
-                    <TradePanel marketId={market.id} onTrade={handleTrade} />
-
-                    {/* Recent Trades (kept below trade panel) */}
-                    <div>
-                        <h2 className="text-lg font-semibold text-[#0f172a] mb-4">Recent Trades</h2>
-                        <div className="space-y-3">
-                            {market.trades.slice(0, 5).map((trade, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between text-sm pb-3 border-b border-[rgba(15,23,42,0.08)] last:border-0 last:pb-0"
-                                >
-                                    <span className="text-[#64748b]">
-                                        {formatDate(trade.time)}
-                                    </span>
-                                    <span className="font-medium text-[#0f172a]">
-                                        {trade.amount.toLocaleString()}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Comments Section */}
-            <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <MessageSquare size={20} className="text-[#0f172a]" aria-hidden="true" />
-                    <h2 className="text-lg font-semibold text-[#0f172a]">Comments</h2>
-                    <span className="text-sm text-[#64748b]">({comments.length})</span>
-                </div>
-
-                {/* Comment Form */}
-                <form onSubmit={handleCommentSubmit} className="mb-6">
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder={
-                                isConnected
-                                    ? "Add a comment..."
-                                    : "Connect wallet to comment"
-                            }
-                            disabled={!isConnected}
-                            className="flex-1 px-4 py-2 border border-[rgba(15,23,42,0.08)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f172a] disabled:bg-[rgba(15,23,42,0.04)] disabled:cursor-not-allowed"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!isConnected || !newComment.trim()}
-                            className="px-4 py-2 bg-[#0f172a] text-white rounded-lg hover:bg-[#0b1324] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            aria-label="Send comment"
-                        >
-                            <Send size={18} />
-                        </button>
-                    </div>
-                </form>
-
-                {/* Comments List */}
-                <div className="space-y-4">
-                    {comments.length === 0 ? (
-                        <p className="text-sm text-[#64748b] text-center py-8">
-                            No comments yet. Be the first to comment!
-                        </p>
-                    ) : (
-                        comments.map((comment) => (
-                            <div
-                                key={comment.id}
-                                className="pb-4 border-b border-[rgba(15,23,42,0.08)] last:border-0 last:pb-0"
-                            >
-                                <div className="flex items-start justify-between gap-4 mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-[rgba(15,23,42,0.08)] flex items-center justify-center">
-                                            <span className="text-xs font-semibold text-[#0f172a]">
-                                                {comment.author[0].toUpperCase()}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-semibold text-[#0f172a]">
-                                                {comment.author}
-                                            </p>
-                                            <p className="text-xs text-[#64748b]">
-                                                {comment.authorAddress}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {comment.vote && (
-                                        <span
-                                            className={`text-xs px-2 py-1 rounded-full ${comment.vote === "yes"
-                                                    ? "bg-[rgba(16,185,129,0.12)] text-[#065f46]"
-                                                    : "bg-[rgba(239,68,68,0.12)] text-[#ef4444]"
-                                                }`}
-                                        >
-                                            Voted {comment.vote}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-[#0f172a] mb-2">{comment.content}</p>
-                                <p className="text-xs text-[#64748b]">
-                                    {formatCommentTime(comment.timestamp)}
-                                </p>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-        </main>
+      <main className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="text-center py-12 text-[#64748b]">Loading market data from chain…</div>
+      </main>
     );
-}
+  }
 
+  if (!hasMarket) {
+    return (
+      <main className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-semibold mb-2">No active market</h1>
+          <p className="text-[#64748b] mb-4">No market has been created yet.</p>
+          <Link href="/" className="inline-flex items-center gap-2 text-[#2563eb] no-underline">
+            <ArrowLeft size={16} /> Back to Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="max-w-[1200px] mx-auto px-4 py-8">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] mb-6 no-underline"
+      >
+        <ArrowLeft size={16} />
+        Back to Home
+      </Link>
+
+      {/* Market Header */}
+      <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-semibold text-[#0f172a]">BTC Price Movement Market</h1>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${stateColors[state] ?? ""}`}>
+                {MarketStateLabel[state] ?? "Unknown"}
+              </span>
+            </div>
+            <p className="text-[#475569]">
+              Predict how much BTC will move by expiry — direction doesn't matter, only the magnitude counts.
+              {isResolved && (
+                <span className="ml-2 text-purple-700 font-medium">
+                  Winner: {getBracketLabel(marketInfo.winningBracket, marketInfo.threshold1, marketInfo.threshold2)}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-[rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-[#64748b]" />
+            <div>
+              <p className="text-xs text-[#64748b]">{isOpen ? "Time Remaining" : "Status"}</p>
+              <p className="text-sm font-semibold text-[#0f172a]">
+                {isOpen ? <CountdownTimer expiry={expiry} /> : MarketStateLabel[state]}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-[#64748b]">Start Price</p>
+            <p className="text-sm font-semibold text-[#0f172a]">{formatPrice(marketInfo.startPrice)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-[#64748b]">
+              {isResolved ? "End Price" : "Total Pool"}
+            </p>
+            <p className="text-sm font-semibold text-[#0f172a]">
+              {isResolved ? formatPrice(marketInfo.endPrice) : formatRbtc(totalPool)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[#64748b]">Expiry</p>
+            <p className="text-sm font-semibold text-[#0f172a]">
+              {expiryDate?.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) ?? "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart + Trade Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2 border border-[rgba(15,23,42,0.08)] rounded-xl p-6 space-y-4">
+          <h3 className="text-sm text-[#64748b]">Bracket Distribution</h3>
+
+          <div className="space-y-3">
+            {([0, 1, 2] as const).map((b) => {
+              const label = getBracketLabel(b, marketInfo.threshold1, marketInfo.threshold2);
+              const total = bracketTotals[b];
+              const pct = totalPool > 0n ? Number((total * 100n) / totalPool) : 0;
+              const isWinner = isResolved && marketInfo.winningBracket === b;
+              return (
+                <div key={b}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className={`font-medium ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
+                      Bracket {b}: {label} {isWinner && "🏆"}
+                    </span>
+                    <span className="text-[#64748b]">{formatRbtc(total)} ({pct}%)</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${isWinner ? "bg-green-500" : "bg-[#6366f1]"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4">
+            <Chart lastVote={null} tradeEvent={null} />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <TradePanel />
+        </div>
+      </div>
+
+      {/* Comments Section */}
+      <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare size={20} className="text-[#0f172a]" />
+          <h2 className="text-lg font-semibold text-[#0f172a]">Comments</h2>
+          <span className="text-sm text-[#64748b]">({comments.length})</span>
+        </div>
+
+        <form onSubmit={handleCommentSubmit} className="mb-6">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder={isConnected ? "Add a comment…" : "Connect wallet to comment"}
+              disabled={!isConnected}
+              className="flex-1 px-4 py-2 border border-[rgba(15,23,42,0.08)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f172a] disabled:bg-[rgba(15,23,42,0.04)] disabled:cursor-not-allowed"
+            />
+            <button
+            title="submit"
+              type="submit"
+              disabled={!isConnected || !newComment.trim()}
+              className="px-4 py-2 bg-[#0f172a] text-white rounded-lg hover:bg-[#0b1324] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-4">
+          {comments.length === 0 ? (
+            <p className="text-sm text-[#64748b] text-center py-8">No comments yet. Be the first to comment!</p>
+          ) : (
+            comments.map((comment) => (
+              <div key={comment.id} className="pb-4 border-b border-[rgba(15,23,42,0.08)] last:border-0 last:pb-0">
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[rgba(15,23,42,0.08)] flex items-center justify-center">
+                      <span className="text-xs font-semibold text-[#0f172a]">{comment.author[0].toUpperCase()}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#0f172a]">{comment.author}</p>
+                      <p className="text-xs text-[#64748b]">{comment.authorAddress}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-[#0f172a] mb-1">{comment.content}</p>
+                <p className="text-xs text-[#64748b]">{formatCommentTime(comment.timestamp)}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}

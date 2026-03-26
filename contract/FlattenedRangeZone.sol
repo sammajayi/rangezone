@@ -1,4 +1,4 @@
-[dotenv@17.3.1] injecting env (3) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.3.1] injecting env (3) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
 // Sources flattened with hardhat v2.28.6 https://hardhat.org
 
 // SPDX-License-Identifier: MIT
@@ -348,7 +348,7 @@ contract RangeZone is ReentrancyGuard {
         uint256 _duration,
         uint256 _threshold1,
         uint256 _threshold2
-    ) external onlyOwner {
+    ) external {
        require(
         market.state == MarketState.Closed ||
         market.state == MarketState.Resolved ||

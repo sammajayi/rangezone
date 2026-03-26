@@ -75,7 +75,7 @@ contract RangeZone is ReentrancyGuard {
         uint256 _duration,
         uint256 _threshold1,
         uint256 _threshold2
-    ) external onlyOwner {
+    ) external {
        require(
         market.state == MarketState.Closed ||
         market.state == MarketState.Resolved ||

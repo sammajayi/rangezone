@@ -73,7 +73,7 @@ The market duration is passed as a parameter in seconds rather than being hardco
 --
 ### Deployed Contract
 
-RangeZone deployed to: 0x93fa2048f527e977Ba6BAC61ee0F029BfE66e46a
+RangeZone deployed to: 0xB04E2557aF2B830cc89E125C6d6165193A82A028
 Using Mock Price Feed: 0xf1E6984E475EfacD31FcD6e0BF968EC2Ddc9d8DB
 --
 

@@ -5,8 +5,6 @@ import { ReactNode, useState } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-// import { config } from '../../config/wagmi';
-import { queryClient } from "../../config/wagmiProviderConfig";
 import { rainbowkitConfig } from "../../config/rainbowKitConfig";
 
 type ProvidersProps = {
