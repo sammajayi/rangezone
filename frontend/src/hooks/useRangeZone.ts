@@ -164,7 +164,7 @@ export function useAllMarkets(): { entries: MarketEntry[]; isLoading: boolean } 
     const b1 = (results[count + i * 3 + 1]?.result as bigint | undefined) ?? 0n;
     const b2 = (results[count + i * 3 + 2]?.result as bigint | undefined) ?? 0n;
 
-    return { id: BigInt(i + 1), market, bracketTotals: [b0, b1, b2] };
+    return { id: BigInt(i + 1), market, bracketTotals: [b0, b1, b2] as [bigint, bigint, bigint] };
   }).reverse();
 
   return { entries, isLoading };
