@@ -6,7 +6,7 @@ import { ArrowLeft, Clock, MessageSquare, Send } from "lucide-react";
 import { useAccount } from "wagmi";
 import Chart from "../../../components/chart";
 import { TradePanel } from "../../../components/tradePanel";
-import { useMarketInfo, useMarketCount, useBracketTotals } from "../../../hooks/useRangeZone";
+import { useCurrentMarket, useBracketTotals } from "../../../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../../../lib/rangeZoneContract";
 
 interface Comment {
@@ -41,9 +41,11 @@ function CountdownTimer({ expiry }: { expiry: bigint }) {
 
 export default function MarketDetailPage() {
   const { address, isConnected } = useAccount();
-  const { data: marketInfo, isLoading } = useMarketInfo();
-  const { data: marketCount } = useMarketCount();
-  const bracketTotals = useBracketTotals(marketCount as bigint | undefined);
+  const { data: currentMarket, isLoading } = useCurrentMarket();
+
+  const marketId = currentMarket ? currentMarket[0] : undefined;
+  const marketInfo = currentMarket ? currentMarket[1] : undefined;
+  const bracketTotals = useBracketTotals(marketId);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -116,7 +118,7 @@ export default function MarketDetailPage() {
         className="inline-flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] mb-6 no-underline"
       >
         <ArrowLeft size={16} />
-        Back to Home
+        Back to Markets
       </Link>
 
       {/* Market Header */}
@@ -124,7 +126,9 @@ export default function MarketDetailPage() {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-semibold text-[#0f172a]">BTC Price Movement Market</h1>
+              <h1 className="text-2xl font-semibold text-[#0f172a]">
+                BTC Price Movement Market {marketId !== undefined ? `#${marketId.toString()}` : ""}
+              </h1>
               <span className={`text-xs px-2 py-1 rounded-full font-semibold ${stateColors[state] ?? ""}`}>
                 {MarketStateLabel[state] ?? "Unknown"}
               </span>
@@ -171,38 +175,45 @@ export default function MarketDetailPage() {
         </div>
       </div>
 
-      {/* Chart + Trade Panel */}
+      {/* Bracket Distribution + Staking Chart + Trade Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2 border border-[rgba(15,23,42,0.08)] rounded-xl p-6 space-y-4">
-          <h3 className="text-sm text-[#64748b]">Bracket Distribution</h3>
-
-          <div className="space-y-3">
-            {([0, 1, 2] as const).map((b) => {
-              const label = getBracketLabel(b, marketInfo.threshold1, marketInfo.threshold2);
-              const total = bracketTotals[b];
-              const pct = totalPool > 0n ? Number((total * 100n) / totalPool) : 0;
-              const isWinner = isResolved && marketInfo.winningBracket === b;
-              return (
-                <div key={b}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className={`font-medium ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
-                      Bracket {b}: {label} {isWinner && "🏆"}
-                    </span>
-                    <span className="text-[#64748b]">{formatRbtc(total)} ({pct}%)</span>
+        <div className="lg:col-span-2 border border-[rgba(15,23,42,0.08)] rounded-xl p-6 space-y-6">
+          {/* Bracket bars */}
+          <div>
+            <h3 className="text-sm font-medium text-[#64748b] mb-3">Bracket Distribution</h3>
+            <div className="space-y-3">
+              {([0, 1, 2] as const).map((b) => {
+                const label = getBracketLabel(b, marketInfo.threshold1, marketInfo.threshold2);
+                const total = bracketTotals[b];
+                const pct = totalPool > 0n ? Number((total * 100n) / totalPool) : 0;
+                const isWinner = isResolved && marketInfo.winningBracket === b;
+                return (
+                  <div key={b}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className={`font-medium ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
+                        {label} {isWinner && "🏆"}
+                      </span>
+                      <span className="text-[#64748b]">{formatRbtc(total)} ({pct}%)</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${isWinner ? "bg-green-500" : "bg-[#6366f1]"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${isWinner ? "bg-green-500" : "bg-[#6366f1]"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
-          <div className="mt-4">
-            <Chart lastVote={null} tradeEvent={null} />
+          {/* Staking activity chart */}
+          <div className="border-t border-[rgba(15,23,42,0.08)] pt-4">
+            <Chart
+              marketId={marketId}
+              threshold1={marketInfo.threshold1}
+              threshold2={marketInfo.threshold2}
+            />
           </div>
         </div>
 
@@ -230,7 +241,6 @@ export default function MarketDetailPage() {
               className="flex-1 px-4 py-2 border border-[rgba(15,23,42,0.08)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f172a] disabled:bg-[rgba(15,23,42,0.04)] disabled:cursor-not-allowed"
             />
             <button
-            title="submit"
               type="submit"
               disabled={!isConnected || !newComment.trim()}
               className="px-4 py-2 bg-[#0f172a] text-white rounded-lg hover:bg-[#0b1324] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

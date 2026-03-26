@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useRouter } from "next/navigation";
-import { useCreateMarket } from "../../hooks/useRangeZone";
+import { useCreateMarket, useContractOwner } from "../../hooks/useRangeZone";
 
 const RSK_TESTNET_CHAIN_ID = 31;
 
@@ -18,12 +18,14 @@ const DURATION_OPTIONS = [
 
 export default function CreateMarketPage() {
   const router = useRouter();
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const { data: owner } = useContractOwner();
   const { createMarket, isPending, isConfirming, isSuccess, error } = useCreateMarket();
 
   const isWrongNetwork = isConnected && chainId !== RSK_TESTNET_CHAIN_ID;
+  const isOwner = isConnected && owner && address && owner.toLowerCase() === address.toLowerCase();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [duration, setDuration] = useState(DURATION_OPTIONS[3].seconds);
@@ -64,6 +66,17 @@ export default function CreateMarketPage() {
     );
   }
 
+  if (isConnected && owner && !isOwner) {
+    return (
+      <main className="max-w-[720px] mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-semibold mb-2">Create market</h1>
+        <p className="text-[#64748b]">Only the contract owner can create markets.</p>
+        <p className="text-xs text-[#94a3b8] mt-2">Owner: {owner}</p>
+        <p className="text-xs text-[#94a3b8]">Your address: {address}</p>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-[720px] mx-auto px-4 py-8">
       <h1 className="text-2xl font-semibold mb-1">Create market</h1>
@@ -90,16 +103,18 @@ export default function CreateMarketPage() {
             <div key={step} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${currentStep >= step ? "bg-[#0f172a] text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
-                    }`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
+                    currentStep >= step ? "bg-[#0f172a] text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
+                  }`}
                 >
                   {step}
                 </div>
               </div>
               {index < 1 && (
                 <div
-                  className={`h-1 flex-1 mx-2 transition-colors ${currentStep > step ? "bg-[#0f172a]" : "bg-[rgba(15,23,42,0.08)]"
-                    }`}
+                  className={`h-1 flex-1 mx-2 transition-colors ${
+                    currentStep > step ? "bg-[#0f172a]" : "bg-[rgba(15,23,42,0.08)]"
+                  }`}
                 />
               )}
             </div>
@@ -123,10 +138,11 @@ export default function CreateMarketPage() {
                   key={opt.seconds}
                   type="button"
                   onClick={() => setDuration(opt.seconds)}
-                  className={`py-3 px-4 rounded-lg border text-sm font-medium transition-colors ${duration === opt.seconds
+                  className={`py-3 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                    duration === opt.seconds
                       ? "border-[#6366f1] bg-[rgba(99,102,241,0.06)] text-[#0f172a]"
                       : "border-[rgba(15,23,42,0.12)] text-[#0f172a] hover:bg-[rgba(15,23,42,0.03)]"
-                    }`}
+                  }`}
                 >
                   {opt.label}
                 </button>
@@ -199,17 +215,13 @@ export default function CreateMarketPage() {
 
             {/* Summary */}
             <div className="bg-[rgba(15,23,42,0.03)] rounded-lg p-4 text-sm space-y-1">
-              <p className="font-semibold text-[#0f172a] mb-2">Market Information</p>
-
-
+              <p className="font-semibold text-[#0f172a] mb-2">Market Summary</p>
               <p className="text-[#64748b]">Duration: <strong>{selectedDurationLabel}</strong></p>
-              <p className="text-[#64748b]">Bracket 0: YES if price moves &lt; {threshold1}%</p>
-              <p className="text-[#64748b]">Bracket 1: NO if price moves {threshold1}% – {threshold2}%</p>
-              <p className="text-[#64748b]">Bracket 2: NO if price moves &gt; {threshold2}%</p>
-
+              <p className="text-[#64748b]">Bracket 0: price moves &lt; {threshold1}%</p>
+              <p className="text-[#64748b]">Bracket 1: price moves {threshold1}% – {threshold2}%</p>
+              <p className="text-[#64748b]">Bracket 2: price moves &gt; {threshold2}%</p>
+              <p className="text-[#64748b] text-xs mt-2">Network: RSK Testnet · Contract: 0x7368…D7</p>
             </div>
-
-
 
             {isSuccess && (
               <div className="bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">

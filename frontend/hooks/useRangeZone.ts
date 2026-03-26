@@ -1,16 +1,16 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
-import { RANGE_ZONE_ADDRESS, RANGE_ZONE_ABI, MarketInfo } from "../src/lib/rangeZoneContract";
+import { RANGE_ZONE_ADDRESS, RANGE_ZONE_ABI } from "../src/lib/rangeZoneContract";
 
 const RSK_TESTNET_CHAIN_ID = 31;
 
-export function useMarketInfo() {
+export function useCurrentMarket() {
   return useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
-    functionName: "getMarketInfo",
+    functionName: "getCurrentMarket",
     chainId: RSK_TESTNET_CHAIN_ID,
   });
 }
@@ -38,58 +38,62 @@ export function useAccumulatedFee() {
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "accumulatedFee",
+    chainId: RSK_TESTNET_CHAIN_ID,
   });
 }
 
-export function useBracketTotals(marketCount: bigint | undefined) {
+export function useBracketTotals(marketId: bigint | undefined) {
   const b0 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "bracketTotals",
-    args: marketCount !== undefined ? [marketCount, 0] : undefined,
+    args: marketId !== undefined ? [marketId, 0] : undefined,
     chainId: RSK_TESTNET_CHAIN_ID,
-    query: { enabled: marketCount !== undefined },
+    query: { enabled: marketId !== undefined && marketId > 0n },
   });
   const b1 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "bracketTotals",
-    args: marketCount !== undefined ? [marketCount, 1] : undefined,
+    args: marketId !== undefined ? [marketId, 1] : undefined,
     chainId: RSK_TESTNET_CHAIN_ID,
-    query: { enabled: marketCount !== undefined },
+    query: { enabled: marketId !== undefined && marketId > 0n },
   });
   const b2 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "bracketTotals",
-    args: marketCount !== undefined ? [marketCount, 2] : undefined,
+    args: marketId !== undefined ? [marketId, 2] : undefined,
     chainId: RSK_TESTNET_CHAIN_ID,
-    query: { enabled: marketCount !== undefined },
+    query: { enabled: marketId !== undefined && marketId > 0n },
   });
   return [b0.data ?? 0n, b1.data ?? 0n, b2.data ?? 0n] as [bigint, bigint, bigint];
 }
 
-export function useUserStakes(marketCount: bigint | undefined, userAddress: `0x${string}` | undefined) {
+export function useUserStakes(marketId: bigint | undefined, userAddress: `0x${string}` | undefined) {
   const s0 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "stakes",
-    args: marketCount !== undefined && userAddress ? [marketCount, 0, userAddress] : undefined,
-    query: { enabled: marketCount !== undefined && !!userAddress },
+    args: marketId !== undefined && userAddress ? [marketId, 0, userAddress] : undefined,
+    chainId: RSK_TESTNET_CHAIN_ID,
+    query: { enabled: marketId !== undefined && marketId > 0n && !!userAddress },
   });
   const s1 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "stakes",
-    args: marketCount !== undefined && userAddress ? [marketCount, 1, userAddress] : undefined,
-    query: { enabled: marketCount !== undefined && !!userAddress },
+    args: marketId !== undefined && userAddress ? [marketId, 1, userAddress] : undefined,
+    chainId: RSK_TESTNET_CHAIN_ID,
+    query: { enabled: marketId !== undefined && marketId > 0n && !!userAddress },
   });
   const s2 = useReadContract({
     address: RANGE_ZONE_ADDRESS,
     abi: RANGE_ZONE_ABI,
     functionName: "stakes",
-    args: marketCount !== undefined && userAddress ? [marketCount, 2, userAddress] : undefined,
-    query: { enabled: marketCount !== undefined && !!userAddress },
+    args: marketId !== undefined && userAddress ? [marketId, 2, userAddress] : undefined,
+    chainId: RSK_TESTNET_CHAIN_ID,
+    query: { enabled: marketId !== undefined && marketId > 0n && !!userAddress },
   });
   return [s0.data ?? 0n, s1.data ?? 0n, s2.data ?? 0n] as [bigint, bigint, bigint];
 }
@@ -98,12 +102,12 @@ export function useStake() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const stake = (bracket: number, amountEth: string) => {
+  const stake = (marketId: bigint, bracket: number, amountEth: string) => {
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
       functionName: "stake",
-      args: [bracket as 0 | 1 | 2],
+      args: [marketId, bracket as 0 | 1 | 2],
       value: parseEther(amountEth),
     });
   };
@@ -115,11 +119,12 @@ export function useResolve() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const resolve = () => {
+  const resolve = (marketId: bigint) => {
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
       functionName: "resolve",
+      args: [marketId],
     });
   };
 
@@ -130,11 +135,12 @@ export function useClaim() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const claim = () => {
+  const claim = (marketId: bigint) => {
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
       functionName: "claim",
+      args: [marketId],
     });
   };
 

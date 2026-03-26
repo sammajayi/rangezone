@@ -1,4 +1,4 @@
-export const RANGE_ZONE_ADDRESS = "0xB04E2557aF2B830cc89E125C6d6165193A82A028" as const;
+export const RANGE_ZONE_ADDRESS = "0x73689f97092c0b27DDd90cd59b14Ca691dE754D7" as const;
 
 export const RANGE_ZONE_ABI = [
   {
@@ -20,21 +20,24 @@ export const RANGE_ZONE_ABI = [
   {
     type: "function",
     name: "stake",
-    inputs: [{ name: "_bracket", type: "uint8", internalType: "uint8" }],
+    inputs: [
+      { name: "_marketId", type: "uint256", internalType: "uint256" },
+      { name: "_bracket", type: "uint8", internalType: "uint8" },
+    ],
     outputs: [],
     stateMutability: "payable",
   },
   {
     type: "function",
     name: "resolve",
-    inputs: [],
+    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
     name: "claim",
-    inputs: [],
+    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -47,8 +50,32 @@ export const RANGE_ZONE_ABI = [
   },
   {
     type: "function",
-    name: "getMarketInfo",
+    name: "getCurrentMarket",
     inputs: [],
+    outputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
+      {
+        name: "m",
+        type: "tuple",
+        internalType: "struct RangeZone.Market",
+        components: [
+          { name: "startPrice", type: "int256", internalType: "int256" },
+          { name: "endPrice", type: "int256", internalType: "int256" },
+          { name: "expiry", type: "uint256", internalType: "uint256" },
+          { name: "totalPool", type: "uint256", internalType: "uint256" },
+          { name: "winningBracket", type: "uint8", internalType: "uint8" },
+          { name: "state", type: "uint8", internalType: "enum RangeZone.MarketState" },
+          { name: "threshold1", type: "uint256", internalType: "uint256" },
+          { name: "threshold2", type: "uint256", internalType: "uint256" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getMarket",
+    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
     outputs: [
       {
         name: "",
@@ -114,6 +141,7 @@ export const RANGE_ZONE_ABI = [
     type: "event",
     name: "MarketCreated",
     inputs: [
+      { name: "marketId", type: "uint256", indexed: true },
       { name: "startPrice", type: "int256", indexed: false },
       { name: "expiry", type: "uint256", indexed: false },
       { name: "threshold1", type: "uint256", indexed: false },
@@ -124,6 +152,7 @@ export const RANGE_ZONE_ABI = [
     type: "event",
     name: "Staked",
     inputs: [
+      { name: "marketId", type: "uint256", indexed: true },
       { name: "user", type: "address", indexed: true },
       { name: "bracket", type: "uint8", indexed: false },
       { name: "amount", type: "uint256", indexed: false },
@@ -133,6 +162,7 @@ export const RANGE_ZONE_ABI = [
     type: "event",
     name: "Resolved",
     inputs: [
+      { name: "marketId", type: "uint256", indexed: true },
       { name: "winningBracket", type: "uint8", indexed: false },
       { name: "endPrice", type: "int256", indexed: false },
     ],
@@ -141,6 +171,7 @@ export const RANGE_ZONE_ABI = [
     type: "event",
     name: "Claimed",
     inputs: [
+      { name: "marketId", type: "uint256", indexed: true },
       { name: "user", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
     ],

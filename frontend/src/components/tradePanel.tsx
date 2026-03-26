@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import {
-  useMarketInfo,
-  useMarketCount,
+  useCurrentMarket,
   useBracketTotals,
   useUserStakes,
   useStake,
@@ -22,11 +21,15 @@ export function TradePanel() {
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const isWrongNetwork = isConnected && chainId !== RSK_TESTNET_CHAIN_ID;
-  const { data: marketInfo, refetch } = useMarketInfo();
-  const { data: marketCount } = useMarketCount();
+
+  const { data: currentMarket, refetch } = useCurrentMarket();
   const { data: owner } = useContractOwner();
-  const bracketTotals = useBracketTotals(marketCount as bigint | undefined);
-  const userStakes = useUserStakes(marketCount as bigint | undefined, address);
+
+  const marketId = currentMarket ? currentMarket[0] : undefined;
+  const marketInfo = currentMarket ? currentMarket[1] : undefined;
+
+  const bracketTotals = useBracketTotals(marketId);
+  const userStakes = useUserStakes(marketId, address);
 
   const [selectedBracket, setSelectedBracket] = useState<0 | 1 | 2>(0);
   const [amount, setAmount] = useState("");
@@ -63,15 +66,15 @@ export function TradePanel() {
 
   const handleStake = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0) return;
+    if (!amount || Number(amount) <= 0 || !marketId) return;
     setTxMessage(null);
-    stake(selectedBracket, amount);
+    stake(marketId, selectedBracket, amount);
   };
 
   if (!marketInfo || marketInfo.expiry === 0n) {
     return (
       <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4 text-sm text-[#64748b]">
-        No active market. Anyone can create one from the create page.
+        No active market. The contract owner can create one from the create page.
       </div>
     );
   }
@@ -129,7 +132,7 @@ export function TradePanel() {
                       className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                         isSelected
                           ? "bg-green-500 text-white"
-                          : "bg-[rgba(15,23,42,0.06)] text-[#64748b] hover:bg-green-100 hover:text-green-700 cursor-pointer"
+                          : "bg-[rgba(15,23,42,0.06)] text-[#64748b] hover:bg-green-100 hover:text-green-700"
                       }`}
                     >
                       Yes
@@ -140,7 +143,7 @@ export function TradePanel() {
                       className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
                         !isSelected
                           ? "bg-red-100 text-red-600"
-                          : "bg-[rgba(15,23,42,0.06)] text-[#64748b] hover:bg-red-100 hover:text-red-600 cursor-pointer"
+                          : "bg-[rgba(15,23,42,0.06)] text-[#64748b] hover:bg-red-100 hover:text-red-600"
                       }`}
                     >
                       No
@@ -168,7 +171,7 @@ export function TradePanel() {
             disabled={!isConnected || isWrongNetwork || !amount || Number(amount) <= 0 || staking || stakingConfirming}
             className="w-full px-4 py-2 bg-[#0f172a] text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            {staking || stakingConfirming ? "Confirming…" : `Stake ${getBracketLabel(selectedBracket, marketInfo.threshold1, marketInfo.threshold2)}`}
+            {staking || stakingConfirming ? "Confirming…" : `Stake — ${getBracketLabel(selectedBracket, marketInfo.threshold1, marketInfo.threshold2)}`}
           </button>
 
           {!isConnected && (
@@ -181,7 +184,7 @@ export function TradePanel() {
         <div className="pt-2 border-t border-[rgba(15,23,42,0.08)]">
           <p className="text-xs text-[#64748b] mb-2">Market has expired. Anyone can trigger resolution:</p>
           <button
-            onClick={() => { setTxMessage(null); resolve(); }}
+            onClick={() => { setTxMessage(null); if (marketId) resolve(marketId); }}
             disabled={resolving || resolvingConfirming || isWrongNetwork}
             className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold disabled:opacity-50 text-sm"
           >
@@ -197,7 +200,7 @@ export function TradePanel() {
           </p>
           <p className="text-sm font-medium text-green-700 mb-2">Your stake: {formatRbtc(userWinStake)}</p>
           <button
-            onClick={() => { setTxMessage(null); claim(); }}
+            onClick={() => { setTxMessage(null); if (marketId) claim(marketId); }}
             disabled={claiming || claimingConfirming || isWrongNetwork}
             className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold disabled:opacity-50 text-sm"
           >
