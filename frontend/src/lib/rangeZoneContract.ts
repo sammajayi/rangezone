@@ -200,9 +200,20 @@ export function formatPrice(price: bigint): string {
   return `$${(Number(price) / 1e8).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
+// export function formatRbtc(wei: bigint): string {
+//   return `${(Number(wei) / 1e18).toFixed(6)} tRBTC`;
+// }
+
 export function formatRbtc(wei: bigint): string {
-  return `${(Number(wei) / 1e18).toFixed(6)} tRBTC`;
+  // Mock price: 1 tRBTC = $30,000 (adjust as needed)
+  const MOCK_PRICE_USD = 30000;
+  
+  const tRbtcAmount = Number(wei) / 1e18;
+  const usdAmount = tRbtcAmount * MOCK_PRICE_USD;
+  
+  return `$${usdAmount.toFixed(2)}`;
 }
+
 
 export function getBracketLabel(bracket: number, threshold1: bigint, threshold2: bigint): string {
   const t1 = Number(threshold1);

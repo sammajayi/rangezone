@@ -8,6 +8,7 @@ import { useCreateMarket, useContractOwner, useMarketCount } from "../../hooks/u
 const RSK_TESTNET_CHAIN_ID = 31;
 
 const DURATION_OPTIONS = [
+  { label: "5 minutes", seconds: 300 },
   { label: "1 hour", seconds: 3600 },
   { label: "6 hours", seconds: 21600 },
   { label: "12 hours", seconds: 43200 },
@@ -66,7 +67,7 @@ export default function CreateMarketPage() {
 
   if (!isConnected) {
     return (
-      <main className="max-w-[720px] mx-auto px-4 py-8 text-center">
+      <main className="max-w-180 mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold mb-2">Create market</h1>
         <p className="text-[#64748b]">Connect your wallet to create a market.</p>
       </main>
@@ -75,7 +76,7 @@ export default function CreateMarketPage() {
 
   if (isConnected && owner && !isOwner) {
     return (
-      <main className="max-w-[720px] mx-auto px-4 py-8 text-center">
+      <main className="max-w-180 mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold mb-2">Create market</h1>
         <p className="text-[#64748b]">Once we go live on mainnet, you'll be able to create markets.</p>
       </main>
@@ -83,7 +84,7 @@ export default function CreateMarketPage() {
   }
 
   return (
-    <main className="max-w-[720px] mx-auto px-4 py-8">
+    <main className="max-w-180 mx-auto px-4 py-8">
       <h1 className="text-2xl font-semibold mb-1">Create market</h1>
       <p className="text-[#64748b] mb-6">Configure a new BTC magnitude prediction market on RSK Testnet.</p>
 

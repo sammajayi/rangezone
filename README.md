@@ -20,6 +20,7 @@ When a market is created, the current BTC price is snapshotted as the start pric
 - A non-zero RBTC value must be sent with the stake
 
 **Brackets**
+*i.e an open market trade is between 3% to 7%*
 - Bracket 0 — price moves less than 3%
 - Bracket 1 — price moves between 3% and 7%
 - Bracket 2 — price moves 7% or more

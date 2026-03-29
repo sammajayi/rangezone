@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAllMarkets, MarketEntry } from "../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../lib/rangeZoneContract";
+import { Droplets, Hourglass } from 'lucide-react';
 
 function getMarketQuestion(marketId: string): string {
   if (typeof window === "undefined") return "";
@@ -67,9 +68,8 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
             <h2 className="text-lg font-semibold text-[#0f172a]">
               {question || `BTC Market #${id.toString()}`}
             </h2>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-              displayState === "expired" ? "bg-orange-100 text-orange-700" : STATE_COLORS[state] ?? ""
-            }`}>
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${displayState === "expired" ? "bg-orange-100 text-orange-700" : STATE_COLORS[state] ?? ""
+              }`}>
               {displayState === "expired" ? "Expired" : (MarketStateLabel[state] ?? "Unknown")}
             </span>
           </div>
@@ -100,12 +100,13 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
           <p className="text-xs text-[#64748b] mb-1">Start Price</p>
           <p className="font-semibold text-[#0f172a] text-sm">{formatPrice(market.startPrice)}</p>
         </div>
-        <div className="p-4">
-          <p className="text-xs text-[#64748b] mb-1">Total Pool</p>
+        <div className="p-4 flex items-center gap-1">
+          {/* <p className="text-xs text-[#64748b] mb-1">Total Pool</p> */}
+          <span> <Droplets className="text-[#64748b]"/> </span>
           <p className="font-semibold text-[#0f172a] text-sm">{formatRbtc(totalPool)}</p>
         </div>
-        <div className="p-4">
-          <p className="text-xs text-[#64748b] mb-1">{isOpen ? "Expires In" : "Status"}</p>
+        <div className="p-4 flex items-center gap-1">
+          <p className="text-xs text-[#64748b] mb-1">{isOpen ? <Hourglass className="text-[#64748b]"/> : ""}</p>
           <p className="font-semibold text-[#0f172a] text-sm">
             {isOpen ? <CountdownTimer expiry={market.expiry} /> : MarketStateLabel[state]}
           </p>
@@ -156,7 +157,7 @@ export default function Page() {
   const { entries, isLoading } = useAllMarkets();
 
   return (
-    <main className="max-w-[1200px] mx-auto px-4 py-8">
+    <main className="max-w-300 mx-auto px-4 py-8">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">RangeZone Markets</h1>
