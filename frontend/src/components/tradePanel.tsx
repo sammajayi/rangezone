@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { ExternalLink } from "lucide-react";
 import {
   useMarketById,
   useBracketTotals,
@@ -32,9 +33,28 @@ export function TradePanel({ marketId }: TradePanelProps) {
   const bracketTotals = useBracketTotals(marketId);
   const userStakes = useUserStakes(marketId, address);
 
-  const [selectedBracket, setSelectedBracket] = useState<0 | 1 | 2 | null>(null);
+  const [votes, setVotes] = useState<Record<number, "yes" | "no" | null>>({ 0: null, 1: null, 2: null });
   const [amount, setAmount] = useState("");
   const [txMessage, setTxMessage] = useState<string | null>(null);
+  const [showFaucetHint, setShowFaucetHint] = useState(false);
+
+  const selectedBracket = (Object.entries(votes).find(([, v]) => v === "yes")?.[0] ?? null);
+  const selectedBracketNum: 0 | 1 | 2 | null = selectedBracket !== null ? (Number(selectedBracket) as 0 | 1 | 2) : null;
+
+  function castVote(bracket: 0 | 1 | 2, vote: "yes" | "no") {
+    setVotes((prev) => {
+      const current = prev[bracket];
+      if (vote === "yes") {
+        // Only one bracket can have Yes; toggle off if already yes
+        const cleared = { 0: prev[0] === "yes" ? null : prev[0], 1: prev[1] === "yes" ? null : prev[1], 2: prev[2] === "yes" ? null : prev[2] };
+        return { ...cleared, [bracket]: current === "yes" ? null : "yes" };
+      } else {
+        // Toggle No on this bracket; if it was Yes, clear amount too
+        if (current === "yes") setAmount("");
+        return { ...prev, [bracket]: current === "no" ? null : "no" };
+      }
+    });
+  }
 
   const { stake, isPending: staking, isConfirming: stakingConfirming, isSuccess: stakeSuccess, error: stakeError } = useStake();
   const { resolve, isPending: resolving, isConfirming: resolvingConfirming, isSuccess: resolveSuccess, error: resolveError } = useResolve();
@@ -55,7 +75,7 @@ export function TradePanel({ marketId }: TradePanelProps) {
   const canClaim = isResolved && userWinStake > 0n;
 
   useEffect(() => {
-    if (stakeSuccess) { setTxMessage("Stake confirmed!"); setAmount(""); setSelectedBracket(null); refetch(); }
+    if (stakeSuccess) { setTxMessage("Stake confirmed!"); setAmount(""); setVotes({ 0: null, 1: null, 2: null }); setShowFaucetHint(false); refetch(); }
     if (resolveSuccess) { setTxMessage("Market resolved!"); refetch(); }
     if (claimSuccess) { setTxMessage("Winnings claimed!"); refetch(); }
     if (withdrawSuccess) { setTxMessage("Fee withdrawn!"); refetch(); }
@@ -63,14 +83,21 @@ export function TradePanel({ marketId }: TradePanelProps) {
 
   useEffect(() => {
     const err = stakeError || resolveError || claimError || withdrawError;
-    if (err) setTxMessage(`Error: ${(err as any)?.shortMessage ?? err?.message ?? "Transaction failed"}`);
+    if (err) {
+      const msg = (err as any)?.shortMessage ?? err?.message ?? "Transaction failed";
+      setTxMessage(`Error: ${msg}`);
+      if (msg.toLowerCase().includes("insufficient") || msg.toLowerCase().includes("balance")) {
+        setShowFaucetHint(true);
+      }
+    }
   }, [stakeError, resolveError, claimError, withdrawError]);
 
   const handleStake = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedBracket === null || !amount || Number(amount) <= 0 || !marketId) return;
+    if (selectedBracketNum === null || !amount || Number(amount) <= 0 || !marketId) return;
     setTxMessage(null);
-    stake(marketId, selectedBracket, amount);
+    setShowFaucetHint(false);
+    stake(marketId, selectedBracketNum, amount);
   };
 
   if (!marketInfo || marketInfo.expiry === 0n) {
@@ -114,7 +141,7 @@ export function TradePanel({ marketId }: TradePanelProps) {
       {canTrade && (
         <form onSubmit={handleStake} className="space-y-4">
           <p className="text-xs text-[#64748b]">
-            Vote <strong>Yes</strong> on the bracket you think BTC will land in. You can only stake on one bracket.
+            Vote <strong className="text-[#6366f1]">Yes</strong> on brackets you think BTC will land in, <strong className="text-[#ef4444]">No</strong> on ones you don't. Staking goes on your Yes bracket.
           </p>
 
           <div className="space-y-2">
@@ -124,20 +151,24 @@ export function TradePanel({ marketId }: TradePanelProps) {
               const userBracketStake = userStakes[b];
               const totalPool = marketInfo.totalPool;
               const pct = totalPool > 0n ? Math.round(Number((total * 100n) / totalPool)) : 0;
-              const isYes = selectedBracket === b;
+              const vote = votes[b];
 
               return (
                 <div
                   key={b}
                   className={`border rounded-xl p-3 transition-all ${
-                    isYes
-                      ? "border-[#6366f1] bg-[rgba(99,102,241,0.04)]"
+                    vote === "yes"
+                      ? "border-[#6366f1] bg-[rgba(99,102,241,0.05)]"
+                      : vote === "no"
+                      ? "border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.04)]"
                       : "border-[rgba(15,23,42,0.08)] bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <span className="text-sm font-semibold text-[#0f172a]">{label}</span>
+                      <span className={`text-sm font-semibold ${vote === "yes" ? "text-[#6366f1]" : vote === "no" ? "text-[#ef4444]" : "text-[#0f172a]"}`}>
+                        {label}
+                      </span>
                       {userBracketStake > 0n && (
                         <span className="ml-2 text-xs text-[#6366f1]">
                           (your stake: {formatRbtc(userBracketStake)})
@@ -147,9 +178,9 @@ export function TradePanel({ marketId }: TradePanelProps) {
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setSelectedBracket(b)}
+                        onClick={() => castVote(b, "yes")}
                         className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                          isYes
+                          vote === "yes"
                             ? "bg-[#6366f1] text-white border-[#6366f1]"
                             : "bg-white text-[#6366f1] border-[#6366f1] hover:bg-[rgba(99,102,241,0.08)]"
                         }`}
@@ -158,11 +189,11 @@ export function TradePanel({ marketId }: TradePanelProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { if (isYes) setSelectedBracket(null); }}
+                        onClick={() => castVote(b, "no")}
                         className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                          !isYes
-                            ? "bg-[rgba(15,23,42,0.08)] text-[#64748b] border-[rgba(15,23,42,0.12)]"
-                            : "bg-white text-[#94a3b8] border-[rgba(15,23,42,0.12)] hover:bg-[rgba(15,23,42,0.04)]"
+                          vote === "no"
+                            ? "bg-[#ef4444] text-white border-[#ef4444]"
+                            : "bg-white text-[#ef4444] border-[#ef4444] hover:bg-[rgba(239,68,68,0.08)]"
                         }`}
                       >
                         No
@@ -172,7 +203,7 @@ export function TradePanel({ marketId }: TradePanelProps) {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-[#6366f1] transition-all"
+                        className={`h-full rounded-full transition-all ${vote === "yes" ? "bg-[#6366f1]" : vote === "no" ? "bg-[#ef4444]" : "bg-[#6366f1]"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -183,10 +214,10 @@ export function TradePanel({ marketId }: TradePanelProps) {
             })}
           </div>
 
-          {selectedBracket !== null && (
+          {selectedBracketNum !== null && (
             <div className="bg-[rgba(99,102,241,0.04)] border border-[rgba(99,102,241,0.15)] rounded-lg p-3">
               <p className="text-xs text-[#6366f1] font-medium mb-2">
-                You voted Yes on: <strong>{getBracketLabel(selectedBracket, marketInfo.threshold1, marketInfo.threshold2)}</strong>
+                You voted Yes on: <strong>{getBracketLabel(selectedBracketNum, marketInfo.threshold1, marketInfo.threshold2)}</strong>
               </p>
               <div className="flex gap-2">
                 <input
@@ -209,13 +240,41 @@ export function TradePanel({ marketId }: TradePanelProps) {
               {!isConnected && (
                 <p className="text-xs text-[#64748b] mt-1">Connect your wallet to stake</p>
               )}
+
+              {/* Faucet hint shown proactively when staking form is open */}
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94a3b8]">
+                <span>Need testnet RBTC?</span>
+                <a
+                  href="https://faucet.rootstock.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-orange-500 hover:text-orange-600 font-medium no-underline transition-colors"
+                >
+                  Get from faucet <ExternalLink size={11} />
+                </a>
+              </div>
             </div>
           )}
 
-          {selectedBracket === null && (
-            <p className="text-xs text-[#94a3b8] text-center"> Vote Yes/No on a bracket above to place your stake</p>
+          {selectedBracketNum === null && (
+            <p className="text-xs text-[#94a3b8] text-center">Vote Yes on a bracket above to place your stake</p>
           )}
         </form>
+      )}
+
+      {/* Faucet hint shown when insufficient balance error occurs */}
+      {showFaucetHint && (
+        <div className="border border-orange-200 bg-orange-50 rounded-lg px-3 py-2">
+          <p className="text-xs text-orange-800 font-medium mb-1">Looks like you might need testnet RBTC</p>
+          <a
+            href="https://faucet.rootstock.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 font-semibold text-xs no-underline"
+          >
+            Get free tRBTC from faucet.rootstock.io <ExternalLink size={11} />
+          </a>
+        </div>
       )}
 
       {!canTrade && !isResolved && (

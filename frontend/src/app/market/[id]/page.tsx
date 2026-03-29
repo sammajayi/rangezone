@@ -16,6 +16,7 @@ function getMarketQuestion(marketId: string): string {
   return localStorage.getItem(`market_question_${marketId}`) ?? "";
 }
 
+
 function CountdownTimer({ expiry }: { expiry: bigint }) {
   const [time, setTime] = useState("");
   useEffect(() => {
@@ -157,7 +158,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
         <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
           <p className="text-xs text-[#64748b] mb-1">{isResolved ? "End Price" : "Thresholds"}</p>
           <p className="font-semibold text-[#0f172a]">
-            {isResolved ? formatPrice(marketInfo.endPrice) : `${t1}% / ${t2}%`}
+            {isResolved ? formatPrice(marketInfo.endPrice) : `${t1}% - ${t2}%`}
           </p>
         </div>
       </div>
