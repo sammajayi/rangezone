@@ -8,6 +8,8 @@ import Chart from "../../../components/chart";
 import { TradePanel } from "../../../components/tradePanel";
 import { useMarketById, useBracketTotals } from "../../../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../../../lib/rangeZoneContract";
+import { Droplets } from 'lucide-react';
+
 
 function getMarketQuestion(marketId: string): string {
   if (typeof window === "undefined") return "";
@@ -137,12 +139,14 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
           <p className="text-xs text-[#64748b] mb-1">Start Price</p>
           <p className="font-semibold text-[#0f172a]">{formatPrice(marketInfo.startPrice)}</p>
         </div>
-        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
-          <p className="text-xs text-[#64748b] mb-1">Total Pool</p>
+        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4 flex">
+          {/* <p className="text-xs text-[#64748b] mb-1">Total Pool</p> */}
+          <span> <Droplets className="text-[#64748b]"/> </span>
+
           <p className="font-semibold text-[#0f172a]">{formatRbtc(totalPool)}</p>
         </div>
         <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-4">
-          <p className="text-xs text-[#64748b] mb-1">{isOpen ? "Expires In" : "Expiry Date"}</p>
+          <p className="text-xs text-[#64748b] mb-1">{isOpen ? "" : "Expiry Date"}</p>
           <p className="font-semibold text-[#0f172a] flex items-center gap-1">
             <Clock size={14} className="text-[#64748b]" />
             {isOpen
