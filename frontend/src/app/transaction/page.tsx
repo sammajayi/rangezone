@@ -3,12 +3,13 @@
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
-import { useUserTransactions } from "../../hooks/useRangeZone";
+import { useUserTransactionHistory } from "../../hooks/useSubgraph";
 import { formatRbtc, getBracketLabel } from "../../lib/rangeZoneContract";
 import { useMarketById } from "../../hooks/useRangeZone";
+import { format } from "date-fns";
 
-function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction }) {
-  const { market } = useMarketById(tx.marketId);
+function TxRow({ tx }: { tx: any }) {
+  const { market } = useMarketById(tx.marketId ? BigInt(tx.marketId) : undefined);
 
   const isStake = tx.type === "stake";
   const bracketLabel =
@@ -17,6 +18,9 @@ function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction 
       : tx.bracket !== undefined
       ? `Bracket ${tx.bracket}`
       : "—";
+
+  const timestamp = new Date(tx.blockTimestamp * 1000);
+  const formattedDate = format(timestamp, "MMM dd, yyyy HH:mm");
 
   return (
     <div className="flex items-center justify-between py-3 border-b border-[rgba(15,23,42,0.06)] last:border-0">
@@ -30,11 +34,12 @@ function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction 
         </div>
         <div>
           <p className="text-sm font-medium text-[#0f172a]">
-            {isStake ? "Staked" : "Claimed"} on Market #{tx.marketId.toString()}
+            {isStake ? "Staked" : "Claimed"} on Market #{tx.marketId}
           </p>
           {isStake && (
             <p className="text-xs text-[#64748b]">Bracket: {bracketLabel}</p>
           )}
+          <p className="text-xs text-[#94a3b8]">{formattedDate}</p>
           <p className="text-xs text-[#94a3b8] font-mono">
             Tx:{" "}
             <a
@@ -54,9 +59,9 @@ function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction 
             isStake ? "text-[#0f172a]" : "text-green-600"
           }`}
         >
-          {isStake ? "−" : "+"}{formatRbtc(tx.amount)}
+          {isStake ? "−" : "+"}{formatRbtc(BigInt(tx.amount))}
         </p>
-        <p className="text-xs text-[#94a3b8]">Block #{tx.blockNumber.toString()}</p>
+        <p className="text-xs text-[#94a3b8]">Block #{tx.blockNumber}</p>
       </div>
     </div>
   );
@@ -64,7 +69,7 @@ function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction 
 
 export default function TransactionPage() {
   const { address, isConnected } = useAccount();
-  const { transactions, isLoading, error } = useUserTransactions(address);
+  const { transactions, loading } = useUserTransactionHistory(address);
 
   if (!isConnected) {
     return (
@@ -114,18 +119,11 @@ export default function TransactionPage() {
           </div>
 
           <div className="px-6">
-            {isLoading && (
+            {loading && (
               <p className="text-sm text-[#64748b] py-8 text-center">Loading transactions…</p>
             )}
 
-            {!isLoading && error && (
-              <div className="text-center py-10">
-                <p className="text-sm font-medium text-red-600 mb-1">Could not load transactions</p>
-                <p className="text-xs text-[#64748b]">{error}</p>
-              </div>
-            )}
-
-            {!isLoading && !error && transactions.length === 0 && (
+            {!loading && transactions.length === 0 && (
               <div className="text-center py-10">
                 <p className="text-sm font-medium text-[#0f172a] mb-1">No transactions yet</p>
                 <p className="text-xs text-[#64748b]">
@@ -140,7 +138,7 @@ export default function TransactionPage() {
               </div>
             )}
 
-            {!isLoading && transactions.length > 0 && (
+            {!loading && transactions.length > 0 && (
               <div>
                 {transactions.map((tx, i) => (
                   <TxRow key={`${tx.txHash}-${i}`} tx={tx} />
@@ -149,7 +147,7 @@ export default function TransactionPage() {
             )}
           </div>
 
-          {!isLoading && transactions.length > 0 && (
+          {!loading && transactions.length > 0 && (
             <div className="px-6 py-3 border-t border-[rgba(15,23,42,0.08)] bg-[rgba(15,23,42,0.02)]">
               <p className="text-xs text-[#64748b]">
                 {transactions.filter((t) => t.type === "stake").length} stakes ·{" "}

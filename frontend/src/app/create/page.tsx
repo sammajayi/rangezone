@@ -54,7 +54,6 @@ export default function CreateMarketPage() {
   const t1 = Number(threshold1);
   const t2 = Number(threshold2);
   const thresholdsValid = t1 > 0 && t2 > t1;
-  const questionValid = question.trim().length > 0;
 
   function handleNext() {
     if (currentStep < 3) setCurrentStep(currentStep + 1);
@@ -268,7 +267,7 @@ export default function CreateMarketPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="question">
-                Market question
+                Market question <span className="text-[#94a3b8] font-normal">(optional)</span>
               </label>
               <input
                 id="question"
@@ -352,7 +351,7 @@ export default function CreateMarketPage() {
               </button>
               <button
                 type="submit"
-                disabled={!thresholdsValid || !questionValid || isPending || isConfirming || isSuccess || isWrongNetwork}
+                disabled={!thresholdsValid || isPending || isConfirming || isSuccess || isWrongNetwork}
                 className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending || isConfirming ? "Creating…" : "Create Market"}

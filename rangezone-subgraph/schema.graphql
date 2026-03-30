@@ -1,0 +1,42 @@
+type Claimed @entity(immutable: true) {
+  id: Bytes!
+  marketId: BigInt! # uint256
+  user: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MarketCreated @entity(immutable: true) {
+  id: Bytes!
+  marketId: BigInt! # uint256
+  startPrice: BigInt! # int256
+  expiry: BigInt! # uint256
+  threshold1: BigInt! # uint256
+  threshold2: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Resolved @entity(immutable: true) {
+  id: Bytes!
+  marketId: BigInt! # uint256
+  winningBracket: Int! # uint8
+  endPrice: BigInt! # int256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Staked @entity(immutable: true) {
+  id: Bytes!
+  marketId: BigInt! # uint256
+  user: Bytes! # address
+  bracket: Int! # uint8
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

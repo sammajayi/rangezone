@@ -188,9 +188,9 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
                 <strong>Bracket 2</strong> — move &gt; {t2}% → resolves YES for this bracket
               </li>
             </ul>
-            <p className="text-xs text-[#94a3b8] mt-2">
+            {/* <p className="text-xs text-[#94a3b8] mt-2">
               Stakers in the winning bracket split the entire pool proportionally. All other stakes are lost.
-            </p>
+            </p> */}
           </div>
         </div>
       </div>
