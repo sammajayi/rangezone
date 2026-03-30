@@ -11,6 +11,11 @@ function getMarketQuestion(marketId: string): string {
   return localStorage.getItem(`market_question_${marketId}`) ?? "";
 }
 
+function getMarketImage(marketId: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(`market_image_${marketId}`) ?? "";
+}
+
 function CountdownTimer({ expiry }: { expiry: bigint }) {
   const [time, setTime] = useState("");
   useEffect(() => {
@@ -38,9 +43,12 @@ const STATE_COLORS: Record<number, string> = {
 function MarketCard({ entry }: { entry: MarketEntry }) {
   const { id, market, bracketTotals } = entry;
   const [question, setQuestion] = useState("");
+  const [marketImage, setMarketImage] = useState("");
   const [isExpiredOnChain, setIsExpiredOnChain] = useState(false);
+
   useEffect(() => {
     setQuestion(getMarketQuestion(id.toString()));
+    setMarketImage(getMarketImage(id.toString()));
     const check = () => {
       if (!market) return;
       const expired = market.state === 0 && market.expiry > 0n && BigInt(Math.floor(Date.now() / 1000)) >= market.expiry;
@@ -58,24 +66,37 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
   const isOpen = state === 0;
   const isResolved = state === 2;
   const displayState = isExpiredOnChain ? "expired" : state;
+  const stateLabel = displayState === "expired" ? "Expired" : (MarketStateLabel[state] ?? "Unknown");
+  const stateBadgeClass = displayState === "expired" ? "bg-orange-100 text-orange-700" : (STATE_COLORS[state] ?? "");
 
   return (
     <div className="border border-[rgba(15,23,42,0.08)] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="p-5 border-b border-[rgba(15,23,42,0.08)] flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-lg font-semibold text-[#0f172a]">
-              {question || `BTC Market #${id.toString()}`}
-            </h2>
-            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${displayState === "expired" ? "bg-orange-100 text-orange-700" : STATE_COLORS[state] ?? ""
-              }`}>
-              {displayState === "expired" ? "Expired" : (MarketStateLabel[state] ?? "Unknown")}
-            </span>
+        <div className="flex items-start gap-4">
+          {marketImage ? (
+            <img
+              src={marketImage}
+              alt="Market"
+              width={128}
+              height={128}
+              className="rounded-xl object-cover border border-[rgba(15,23,42,0.08)] shrink-0"
+              style={{ width: 128, height: 128 }}
+            />
+          ) : null}
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-lg font-semibold text-[#0f172a]">
+                {question || `BTC Market #${id.toString()}`}
+              </h2>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${stateBadgeClass}`}>
+                {stateLabel}
+              </span>
+            </div>
+            <p className="text-sm text-[#64748b]">
+              Predict how much BTC will move by expiry — direction doesn&apos;t matter, only magnitude.
+            </p>
           </div>
-          <p className="text-sm text-[#64748b]">
-            Predict how much BTC will move by expiry — direction doesn't matter, only magnitude.
-          </p>
         </div>
         {displayState === "expired" || isResolved ? (
           <Link
@@ -101,12 +122,11 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
           <p className="font-semibold text-[#0f172a] text-sm">{formatPrice(market.startPrice)}</p>
         </div>
         <div className="p-4 flex items-center gap-1">
-          {/* <p className="text-xs text-[#64748b] mb-1">Total Pool</p> */}
-          <span> <Droplets className="text-[#64748b]"/> </span>
+          <span><Droplets className="text-[#64748b]" /></span>
           <p className="font-semibold text-[#0f172a] text-sm">{formatRbtc(totalPool)}</p>
         </div>
         <div className="p-4 flex items-center gap-1">
-          <p className="text-xs text-[#64748b] mb-1">{isOpen ? <Hourglass className="text-[#64748b]"/> : ""}</p>
+          <p className="text-xs text-[#64748b] mb-1">{isOpen ? <Hourglass className="text-[#64748b]" /> : ""}</p>
           <p className="font-semibold text-[#0f172a] text-sm">
             {isOpen ? <CountdownTimer expiry={market.expiry} /> : MarketStateLabel[state]}
           </p>

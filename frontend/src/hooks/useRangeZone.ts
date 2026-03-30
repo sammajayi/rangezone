@@ -330,9 +330,37 @@ export interface UserTransaction {
   txHash: `0x${string}`;
 }
 
+async function fetchLogsWithFallback(
+  client: ReturnType<typeof usePublicClient>,
+  params: Parameters<NonNullable<ReturnType<typeof usePublicClient>>["getLogs"]>[0]
+) {
+  if (!client) return [];
+  try {
+    return await client.getLogs({ ...params, fromBlock: 0n, toBlock: "latest" } as any);
+  } catch (e: any) {
+    const msg = e?.message ?? "";
+    const isRangeError =
+      msg.includes("block range") ||
+      msg.includes("too large") ||
+      msg.includes("limit") ||
+      msg.includes("10000") ||
+      msg.includes("1000");
+    if (!isRangeError) throw e;
+    // Fallback: fetch recent 500,000 blocks only
+    try {
+      const latest = await client.getBlockNumber();
+      const from = latest > 500000n ? latest - 500000n : 0n;
+      return await client.getLogs({ ...params, fromBlock: from, toBlock: "latest" } as any);
+    } catch {
+      return [];
+    }
+  }
+}
+
 export function useUserTransactions(userAddress: `0x${string}` | undefined) {
   const [transactions, setTransactions] = useState<UserTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const client = usePublicClient({ chainId: RSK_TESTNET_CHAIN_ID });
 
   useEffect(() => {
@@ -340,34 +368,34 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
 
     let cancelled = false;
     setIsLoading(true);
+    setError(null);
 
     (async () => {
       try {
+        const stakeEvent = parseAbiItem(
+          "event Staked(uint256 indexed marketId, address indexed user, uint8 bracket, uint256 amount)"
+        );
+        const claimEvent = parseAbiItem(
+          "event Claimed(uint256 indexed marketId, address indexed user, uint256 amount)"
+        );
+
         const [stakeLogs, claimLogs] = await Promise.all([
-          client.getLogs({
+          fetchLogsWithFallback(client, {
             address: RANGE_ZONE_ADDRESS,
-            event: parseAbiItem(
-              "event Staked(uint256 indexed marketId, address indexed user, uint8 bracket, uint256 amount)"
-            ),
+            event: stakeEvent,
             args: { user: userAddress },
-            fromBlock: 0n,
-            toBlock: "latest",
           }),
-          client.getLogs({
+          fetchLogsWithFallback(client, {
             address: RANGE_ZONE_ADDRESS,
-            event: parseAbiItem(
-              "event Claimed(uint256 indexed marketId, address indexed user, uint256 amount)"
-            ),
+            event: claimEvent,
             args: { user: userAddress },
-            fromBlock: 0n,
-            toBlock: "latest",
           }),
         ]);
 
         if (cancelled) return;
 
         const txs: UserTransaction[] = [
-          ...stakeLogs.map((l) => ({
+          ...stakeLogs.map((l: any) => ({
             type: "stake" as const,
             marketId: l.args.marketId as bigint,
             bracket: Number(l.args.bracket ?? 0),
@@ -375,7 +403,7 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
             blockNumber: l.blockNumber ?? 0n,
             txHash: l.transactionHash as `0x${string}`,
           })),
-          ...claimLogs.map((l) => ({
+          ...claimLogs.map((l: any) => ({
             type: "claim" as const,
             marketId: l.args.marketId as bigint,
             amount: l.args.amount as bigint,
@@ -386,8 +414,9 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
 
         txs.sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : 1));
         setTransactions(txs);
-      } catch (e) {
+      } catch (e: any) {
         console.error("useUserTransactions error:", e);
+        setError(e?.message ?? "Failed to load transactions");
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -396,7 +425,7 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
     return () => { cancelled = true; };
   }, [userAddress, client]);
 
-  return { transactions, isLoading };
+  return { transactions, isLoading, error };
 }
 
 export function useStake() {

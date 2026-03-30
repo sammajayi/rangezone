@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useRouter } from "next/navigation";
 import { useCreateMarket, useContractOwner, useMarketCount } from "../../hooks/useRangeZone";
+import { ImagePlus, X } from "lucide-react";
 
 const RSK_TESTNET_CHAIN_ID = 31;
 
@@ -34,12 +35,17 @@ export default function CreateMarketPage() {
   const [threshold1, setThreshold1] = useState("3");
   const [threshold2, setThreshold2] = useState("7");
   const [question, setQuestion] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isSuccess) {
       const newId = (Number(marketCount ?? 0n) + 1).toString();
       if (question.trim()) {
         localStorage.setItem(`market_question_${newId}`, question.trim());
+      }
+      if (imageDataUrl) {
+        localStorage.setItem(`market_image_${newId}`, imageDataUrl);
       }
       setTimeout(() => router.push("/"), 2000);
     }
@@ -61,6 +67,16 @@ export default function CreateMarketPage() {
     e.preventDefault();
     if (!thresholdsValid) return;
     createMarket(duration, t1, t2);
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImageDataUrl(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   }
 
   const selectedDurationLabel = DURATION_OPTIONS.find((o) => o.seconds === duration)?.label ?? "Custom";
@@ -242,12 +258,12 @@ export default function CreateMarketPage() {
           </div>
         )}
 
-        {/* Step 3: Question + Confirm */}
+        {/* Step 3: Question + Image + Confirm */}
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-1">Market Question</h2>
+            <h2 className="text-xl font-semibold mb-1">Market Question & Image</h2>
             <p className="text-sm text-[#64748b] mb-4">
-              Write a clear question that describes what this market is predicting. This will be displayed as the market title.
+              Write a clear question that describes what this market is predicting. Optionally add a cover image (128×128).
             </p>
 
             <div>
@@ -264,6 +280,43 @@ export default function CreateMarketPage() {
                 maxLength={120}
               />
               <p className="text-xs text-[#94a3b8] mt-1">{question.length}/120 characters</p>
+            </div>
+
+            {/* Image upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Market image (optional)</label>
+              {imageDataUrl ? (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={imageDataUrl}
+                    alt="Market preview"
+                    className="w-32 h-32 rounded-xl object-cover border border-[rgba(15,23,42,0.12)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 font-medium"
+                  >
+                    <X size={14} /> Remove image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 border-2 border-dashed border-[rgba(15,23,42,0.12)] rounded-xl px-5 py-4 text-sm text-[#64748b] hover:border-[#6366f1] hover:text-[#6366f1] transition-colors"
+                >
+                  <ImagePlus size={18} />
+                  Upload image (PNG, JPG, GIF — displayed at 128×128)
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
             </div>
 
             {/* Summary */}

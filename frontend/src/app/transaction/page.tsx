@@ -64,7 +64,7 @@ function TxRow({ tx }: { tx: import("../../hooks/useRangeZone").UserTransaction 
 
 export default function TransactionPage() {
   const { address, isConnected } = useAccount();
-  const { transactions, isLoading } = useUserTransactions(address);
+  const { transactions, isLoading, error } = useUserTransactions(address);
 
   if (!isConnected) {
     return (
@@ -118,7 +118,14 @@ export default function TransactionPage() {
               <p className="text-sm text-[#64748b] py-8 text-center">Loading transactions…</p>
             )}
 
-            {!isLoading && transactions.length === 0 && (
+            {!isLoading && error && (
+              <div className="text-center py-10">
+                <p className="text-sm font-medium text-red-600 mb-1">Could not load transactions</p>
+                <p className="text-xs text-[#64748b]">{error}</p>
+              </div>
+            )}
+
+            {!isLoading && !error && transactions.length === 0 && (
               <div className="text-center py-10">
                 <p className="text-sm font-medium text-[#0f172a] mb-1">No transactions yet</p>
                 <p className="text-xs text-[#64748b]">

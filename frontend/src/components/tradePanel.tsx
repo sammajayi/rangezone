@@ -33,28 +33,10 @@ export function TradePanel({ marketId }: TradePanelProps) {
   const bracketTotals = useBracketTotals(marketId);
   const userStakes = useUserStakes(marketId, address);
 
-  const [votes, setVotes] = useState<Record<number, "yes" | "no" | null>>({ 0: null, 1: null, 2: null });
+  const [selectedBracket, setSelectedBracket] = useState<0 | 1 | 2 | null>(null);
   const [amount, setAmount] = useState("");
   const [txMessage, setTxMessage] = useState<string | null>(null);
   const [showFaucetHint, setShowFaucetHint] = useState(false);
-
-  const selectedBracket = (Object.entries(votes).find(([, v]) => v === "yes")?.[0] ?? null);
-  const selectedBracketNum: 0 | 1 | 2 | null = selectedBracket !== null ? (Number(selectedBracket) as 0 | 1 | 2) : null;
-
-  function castVote(bracket: 0 | 1 | 2, vote: "yes" | "no") {
-    setVotes((prev) => {
-      const current = prev[bracket];
-      if (vote === "yes") {
-        // Only one bracket can have Yes; toggle off if already yes
-        const cleared = { 0: prev[0] === "yes" ? null : prev[0], 1: prev[1] === "yes" ? null : prev[1], 2: prev[2] === "yes" ? null : prev[2] };
-        return { ...cleared, [bracket]: current === "yes" ? null : "yes" };
-      } else {
-        // Toggle No on this bracket; if it was Yes, clear amount too
-        if (current === "yes") setAmount("");
-        return { ...prev, [bracket]: current === "no" ? null : "no" };
-      }
-    });
-  }
 
   const { stake, isPending: staking, isConfirming: stakingConfirming, isSuccess: stakeSuccess, error: stakeError } = useStake();
   const { resolve, isPending: resolving, isConfirming: resolvingConfirming, isSuccess: resolveSuccess, error: resolveError } = useResolve();
@@ -75,7 +57,7 @@ export function TradePanel({ marketId }: TradePanelProps) {
   const canClaim = isResolved && userWinStake > 0n;
 
   useEffect(() => {
-    if (stakeSuccess) { setTxMessage("Stake confirmed!"); setAmount(""); setVotes({ 0: null, 1: null, 2: null }); setShowFaucetHint(false); refetch(); }
+    if (stakeSuccess) { setTxMessage("Stake confirmed!"); setAmount(""); setSelectedBracket(null); setShowFaucetHint(false); refetch(); }
     if (resolveSuccess) { setTxMessage("Market resolved!"); refetch(); }
     if (claimSuccess) { setTxMessage("Winnings claimed!"); refetch(); }
     if (withdrawSuccess) { setTxMessage("Fee withdrawn!"); refetch(); }
@@ -94,10 +76,10 @@ export function TradePanel({ marketId }: TradePanelProps) {
 
   const handleStake = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedBracketNum === null || !amount || Number(amount) <= 0 || !marketId) return;
+    if (selectedBracket === null || !amount || Number(amount) <= 0 || !marketId) return;
     setTxMessage(null);
     setShowFaucetHint(false);
-    stake(marketId, selectedBracketNum, amount);
+    stake(marketId, selectedBracket, amount);
   };
 
   if (!marketInfo || marketInfo.expiry === 0n) {
@@ -141,7 +123,7 @@ export function TradePanel({ marketId }: TradePanelProps) {
       {canTrade && (
         <form onSubmit={handleStake} className="space-y-4">
           <p className="text-xs text-[#64748b]">
-            Vote <strong className="text-[#6366f1]">Yes</strong> on brackets you think BTC will land in, <strong className="text-[#ef4444]">No</strong> on ones you don't. Staking goes on your Yes bracket.
+            Select the bracket you think BTC will land in and stake your tRBTC.
           </p>
 
           <div className="space-y-2">
@@ -151,73 +133,54 @@ export function TradePanel({ marketId }: TradePanelProps) {
               const userBracketStake = userStakes[b];
               const totalPool = marketInfo.totalPool;
               const pct = totalPool > 0n ? Math.round(Number((total * 100n) / totalPool)) : 0;
-              const vote = votes[b];
+              const isSelected = selectedBracket === b;
 
               return (
-                <div
+                <button
                   key={b}
-                  className={`border rounded-xl p-3 transition-all ${
-                    vote === "yes"
-                      ? "border-[#6366f1] bg-[rgba(99,102,241,0.05)]"
-                      : vote === "no"
-                      ? "border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.04)]"
-                      : "border-[rgba(15,23,42,0.08)] bg-white"
+                  type="button"
+                  onClick={() => setSelectedBracket(isSelected ? null : b)}
+                  className={`w-full text-left border rounded-xl p-3 transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-[#6366f1] bg-[rgba(99,102,241,0.06)]"
+                      : "border-[rgba(15,23,42,0.08)] bg-white hover:border-[rgba(99,102,241,0.4)] hover:bg-[rgba(99,102,241,0.02)]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className={`text-sm font-semibold ${vote === "yes" ? "text-[#6366f1]" : vote === "no" ? "text-[#ef4444]" : "text-[#0f172a]"}`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                        isSelected ? "border-[#6366f1] bg-[#6366f1]" : "border-[rgba(15,23,42,0.2)]"
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className={`text-sm font-semibold ${isSelected ? "text-[#6366f1]" : "text-[#0f172a]"}`}>
                         {label}
                       </span>
                       {userBracketStake > 0n && (
-                        <span className="ml-2 text-xs text-[#6366f1]">
+                        <span className="text-xs text-[#6366f1]">
                           (your stake: {formatRbtc(userBracketStake)})
                         </span>
                       )}
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => castVote(b, "yes")}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                          vote === "yes"
-                            ? "bg-[#6366f1] text-white border-[#6366f1]"
-                            : "bg-white text-[#6366f1] border-[#6366f1] hover:bg-[rgba(99,102,241,0.08)]"
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => castVote(b, "no")}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                          vote === "no"
-                            ? "bg-[#ef4444] text-white border-[#ef4444]"
-                            : "bg-white text-[#ef4444] border-[#ef4444] hover:bg-[rgba(239,68,68,0.08)]"
-                        }`}
-                      >
-                        No
-                      </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${vote === "yes" ? "bg-[#6366f1]" : vote === "no" ? "bg-[#ef4444]" : "bg-[#6366f1]"}`}
+                        className={`h-full rounded-full transition-all ${isSelected ? "bg-[#6366f1]" : "bg-[#6366f1]/50"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
                     <span className="text-xs text-[#94a3b8] shrink-0">{formatRbtc(total)} ({pct}%)</span>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
 
-          {selectedBracketNum !== null && (
+          {selectedBracket !== null && (
             <div className="bg-[rgba(99,102,241,0.04)] border border-[rgba(99,102,241,0.15)] rounded-lg p-3">
               <p className="text-xs text-[#6366f1] font-medium mb-2">
-                You voted Yes on: <strong>{getBracketLabel(selectedBracketNum, marketInfo.threshold1, marketInfo.threshold2)}</strong>
+                Staking on: <strong>{getBracketLabel(selectedBracket, marketInfo.threshold1, marketInfo.threshold2)}</strong>
               </p>
               <div className="flex gap-2">
                 <input
@@ -241,7 +204,6 @@ export function TradePanel({ marketId }: TradePanelProps) {
                 <p className="text-xs text-[#64748b] mt-1">Connect your wallet to stake</p>
               )}
 
-              {/* Faucet hint shown proactively when staking form is open */}
               <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94a3b8]">
                 <span>Need testnet RBTC?</span>
                 <a
@@ -256,13 +218,12 @@ export function TradePanel({ marketId }: TradePanelProps) {
             </div>
           )}
 
-          {selectedBracketNum === null && (
-            <p className="text-xs text-[#94a3b8] text-center">Vote Yes on a bracket above to place your stake</p>
+          {selectedBracket === null && (
+            <p className="text-xs text-[#94a3b8] text-center">Select a bracket above to place your stake</p>
           )}
         </form>
       )}
 
-      {/* Faucet hint shown when insufficient balance error occurs */}
       {showFaucetHint && (
         <div className="border border-orange-200 bg-orange-50 rounded-lg px-3 py-2">
           <p className="text-xs text-orange-800 font-medium mb-1">Looks like you might need testnet RBTC</p>
