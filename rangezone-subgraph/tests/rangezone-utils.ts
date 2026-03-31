@@ -5,7 +5,7 @@ import {
   MarketCreated,
   Resolved,
   Staked
-} from "../generated/RangeZone/RangeZone"
+} from "../generated/Rangezone/Rangezone"
 
 export function createClaimedEvent(
   marketId: BigInt,

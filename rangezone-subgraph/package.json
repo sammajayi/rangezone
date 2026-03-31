@@ -1,13 +1,13 @@
 {
-  "name": "rangezone-subgraph",
+  "name": "rangezone",
   "license": "UNLICENSED",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ rangezone-subgraph",
-    "create-local": "graph create --node http://localhost:8020/ rangezone-subgraph",
-    "remove-local": "graph remove --node http://localhost:8020/ rangezone-subgraph",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 rangezone-subgraph",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ rangezone",
+    "create-local": "graph create --node http://localhost:8020/ rangezone",
+    "remove-local": "graph remove --node http://localhost:8020/ rangezone",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 rangezone",
     "test": "graph test"
   },
   "dependencies": {

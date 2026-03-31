@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useAllMarkets, MarketEntry } from "../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../lib/rangeZoneContract";
 import { Droplets, Hourglass } from 'lucide-react';
-import Leaderboard from "../components/leaderboard";
-import TradesChart from "../components/tradesChart";
 
 function getMarketQuestion(marketId: string): string {
   if (typeof window === "undefined") return "";
@@ -199,9 +197,9 @@ export default function Page() {
         </header>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 gap-8 mb-8">
           {/* Main content - Markets */}
-          <div className="lg:col-span-2">
+          <div>
             {isLoading && (
               <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-12 text-center text-[#64748b] bg-white">
                 <div className="animate-pulse">
@@ -233,18 +231,6 @@ export default function Page() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Leaderboard */}
-            <Leaderboard />
-
-            {/* Trading Activity */}
-            <div>
-              <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider px-1 mb-3">Your Trading Activity</h3>
-              <TradesChart />
-            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 {
   "rootstock-testnet": {
-    "RangeZone": {
+    "Rangezone": {
       "address": "0x3dcDc6FbE53dD8c55F53EA0653f22787E9FFCe36",
       "startBlock": 7506184
     }

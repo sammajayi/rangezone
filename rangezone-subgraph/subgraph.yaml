@@ -5,11 +5,11 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
-    name: RangeZone
+    name: Rangezone
     network: rootstock-testnet
     source:
       address: "0x3dcDc6FbE53dD8c55F53EA0653f22787E9FFCe36"
-      abi: RangeZone
+      abi: Rangezone
       startBlock: 7506184
     mapping:
       kind: ethereum/events
@@ -21,8 +21,8 @@ dataSources:
         - Resolved
         - Staked
       abis:
-        - name: RangeZone
-          file: ./abis/RangeZone.json
+        - name: Rangezone
+          file: ./abis/Rangezone.json
       eventHandlers:
         - event: Claimed(indexed uint256,indexed address,uint256)
           handler: handleClaimed
@@ -32,4 +32,4 @@ dataSources:
           handler: handleResolved
         - event: Staked(indexed uint256,indexed address,uint8,uint256)
           handler: handleStaked
-      file: ./src/range-zone.ts
+      file: ./src/rangezone.ts
