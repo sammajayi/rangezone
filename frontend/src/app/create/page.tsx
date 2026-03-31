@@ -267,15 +267,18 @@ export default function CreateMarketPage() {
 
         {/* Step 3: Question + Image + Confirm */}
         {currentStep === 3 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-1">Market Question & Image</h2>
-            <p className="text-sm text-[#64748b] mb-4">
-              Write a clear question that describes what this market is predicting. Optionally add a cover image (128×128).
-            </p>
+          <div className="space-y-6">
+            <div className="mb-6 pb-6 border-b border-[rgba(15,23,42,0.12)]">
+              <h2 className="text-2xl font-bold mb-2">Market Question & Image</h2>
+              <p className="text-sm text-[#64748b]">
+                Write a clear question that describes what this market is predicting. Optionally add a cover image.
+              </p>
+            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="question">
-                Market question <span className="text-[#94a3b8] font-normal">(optional)</span>
+            {/* Question Section */}
+            <div className="border-2 border-[#6366f1]/30 rounded-lg p-5 bg-[#6366f1]/5">
+              <label className="block text-sm font-semibold mb-3 text-[#0f172a]" htmlFor="question">
+                Market Question <span className="text-[#94a3b8] font-normal text-xs">(optional)</span>
               </label>
               <input
                 id="question"
@@ -283,58 +286,96 @@ export default function CreateMarketPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder={`e.g. Will BTC be between ${threshold1}% and ${threshold2}% by ${selectedDurationLabel} from now?`}
-                className="w-full border border-[rgba(15,23,42,0.12)] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#6366f1] text-sm"
+                className="w-full border border-[rgba(15,23,42,0.12)] rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-[#6366f1] text-base mb-3"
                 maxLength={120}
               />
-              <p className="text-xs text-[#94a3b8] mt-1">{question.length}/120 characters</p>
+              <p className="text-xs text-[#94a3b8] font-medium">{question.length}/120 characters</p>
             </div>
 
-            {/* Image upload */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Market image (optional)</label>
+            {/* Image Upload Section */}
+            <div className="border-2 border-[#6366f1]/30 rounded-lg p-5 bg-[#6366f1]/5">
+              <label className="block text-sm font-semibold mb-4 text-[#0f172a]">Market Image <span className="text-[#94a3b8] font-normal text-xs">(optional)</span></label>
               {imageDataUrl ? (
-                <div className="flex items-center gap-4">
-                  <img
-                    src={imageDataUrl}
-                    alt="Market preview"
-                    className="w-32 h-32 rounded-xl object-cover border border-[rgba(15,23,42,0.12)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 font-medium"
-                  >
-                    <X size={14} /> Remove image
-                  </button>
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="relative">
+                    <img
+                      src={imageDataUrl}
+                      alt="Market preview"
+                      className="w-40 h-40 rounded-lg object-cover border-2 border-[#6366f1]/50"
+                    />
+                    <div className="absolute inset-0 rounded-lg border-2 border-green-400 flex items-center justify-center">
+                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">✓ Ready</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-green-700 mb-2">✓ Image uploaded successfully</p>
+                      <p className="text-xs text-[#64748b]">Your cover image is ready for the market</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 font-medium w-fit mt-4 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      <X size={16} /> Remove image
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 border-2 border-dashed border-[rgba(15,23,42,0.12)] rounded-xl px-5 py-4 text-sm text-[#64748b] hover:border-[#6366f1] hover:text-[#6366f1] transition-colors"
+                  className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[#6366f1]/50 rounded-lg px-6 py-10 text-center hover:border-[#6366f1] hover:bg-[#6366f1]/10 transition-colors cursor-pointer"
                 >
-                  <ImagePlus size={18} />
-                  Upload image (PNG, JPG, GIF — displayed at 128×128)
+                  <ImagePlus size={32} className="text-[#6366f1]" />
+                  <div>
+                    <div className="font-semibold text-[#0f172a] text-base">Click to upload image</div>
+                    <div className="text-xs text-[#64748b] mt-1">PNG, JPG, GIF (128×128 recommended)</div>
+                  </div>
                 </button>
               )}
               <input
-              title="file"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                title="Upload market image"
                 className="hidden"
                 onChange={handleImageChange}
               />
             </div>
 
             {/* Summary */}
-            <div className="bg-[rgba(15,23,42,0.03)] rounded-lg p-4 text-sm space-y-1">
-              <p className="font-semibold text-[#0f172a] mb-2">Market Summary</p>
-              <p className="text-[#64748b]">Question: <strong>{question || "—"}</strong></p>
-              <p className="text-[#64748b]">Duration: <strong>{selectedDurationLabel}</strong></p>
-              <p className="text-[#64748b]">Bracket 0: price moves &lt; {threshold1}%</p>
-              <p className="text-[#64748b]">Bracket 1: price moves {threshold1}% – {threshold2}%</p>
-              <p className="text-[#64748b]">Bracket 2: price moves &gt; {threshold2}%</p>
+            <div className="bg-gradient-to-br from-[#6366f1]/10 via-transparent to-transparent border-2 border-[#6366f1]/30 rounded-lg p-6 space-y-3">
+              <p className="font-bold text-[#0f172a] mb-4 flex items-center gap-2 text-base">
+                <span className="text-xl">📋</span> Market Summary
+              </p>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-start gap-4 py-2 border-b border-[#6366f1]/20">
+                  <span className="text-[#64748b] font-medium">Question:</span>
+                  <span className="text-[#0f172a] font-semibold text-right max-w-xs">{question || "—"}</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-2 border-b border-[#6366f1]/20">
+                  <span className="text-[#64748b] font-medium">Image:</span>
+                  <span className="text-[#0f172a] font-semibold text-right">{imageDataUrl ? "✓ Added" : "—"}</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-2">
+                  <span className="text-[#64748b] font-medium">Duration:</span>
+                  <span className="text-[#0f172a] font-semibold">{selectedDurationLabel}</span>
+                </div>
+                <div className="border-t border-[#6366f1]/30 my-3 pt-3"></div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 0:</span>
+                  <span className="text-[#0f172a] text-xs">&lt; {threshold1}%</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 1:</span>
+                  <span className="text-[#0f172a] text-xs">{threshold1}% – {threshold2}%</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 2:</span>
+                  <span className="text-[#0f172a] text-xs">&gt; {threshold2}%</span>
+                </div>
+              </div>
             </div>
 
             {isSuccess && (
