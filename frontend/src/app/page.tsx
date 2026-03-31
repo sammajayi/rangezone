@@ -108,7 +108,7 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
         ) : (
           <Link
             href={`/market/${id.toString()}`}
-            className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm"
+            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
           >
             View &amp; Trade →
           </Link>
@@ -185,7 +185,7 @@ export default function Page() {
         </div>
         <Link
           href="/create"
-          className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold"
+          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white no-underline px-4 py-2 rounded-lg font-semibold transition-colors"
         >
           Create market
         </Link>

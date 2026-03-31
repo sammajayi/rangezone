@@ -1,7 +1,8 @@
 [
   {
     "inputs": [
-      { "internalType": "address", "name": "_priceFeed", "type": "address" }
+      { "internalType": "address", "name": "_priceFeed", "type": "address" },
+      { "internalType": "uint256", "name": "_maxPriceAge", "type": "uint256" }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
@@ -266,6 +267,13 @@
       { "internalType": "uint256", "name": "threshold1", "type": "uint256" },
       { "internalType": "uint256", "name": "threshold2", "type": "uint256" }
     ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxPriceAge",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },

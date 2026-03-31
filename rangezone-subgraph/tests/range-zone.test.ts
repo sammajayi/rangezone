@@ -8,9 +8,9 @@ import {
 } from "matchstick-as/assembly/index"
 import { BigInt, Address } from "@graphprotocol/graph-ts"
 import { Claimed } from "../generated/schema"
-import { Claimed as ClaimedEvent } from "../generated/rangezone/rangezone"
-import { handleClaimed } from "../src/rangezone"
-import { createClaimedEvent } from "./rangezone-utils"
+import { Claimed as ClaimedEvent } from "../generated/RangeZone/RangeZone"
+import { handleClaimed } from "../src/range-zone"
+import { createClaimedEvent } from "./range-zone-utils"
 
 // Tests structure (matchstick-as >=0.5.0)
 // https://thegraph.com/docs/en/subgraphs/developing/creating/unit-testing-framework/#tests-structure

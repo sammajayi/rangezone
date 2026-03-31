@@ -3,7 +3,7 @@ import {
   MarketCreated as MarketCreatedEvent,
   Resolved as ResolvedEvent,
   Staked as StakedEvent
-} from "../generated/rangezone/rangezone"
+} from "../generated/RangeZone/RangeZone"
 import { Claimed, MarketCreated, Resolved, Staked } from "../generated/schema"
 
 export function handleClaimed(event: ClaimedEvent): void {

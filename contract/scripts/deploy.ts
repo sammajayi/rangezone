@@ -3,35 +3,81 @@ import { ethers } from "hardhat";
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  console.log("Deploying contracts with:", deployer.address);
-  console.log(
-    "Balance:",
-    ethers.formatEther(await ethers.provider.getBalance(deployer.address)),
-    "rBTC"
+  console.log("Deploying with:", deployer.address);
+
+  const balance = await ethers.provider.getBalance(
+    deployer.address
   );
 
-  //  MockPriceFeed
-  const MockPriceFeed = await ethers.getContractFactory("MockPriceFeed");
-  const mockPriceFeed = await MockPriceFeed.deploy();
-  await mockPriceFeed.waitForDeployment();
+  console.log(
+    "Balance:",
+    ethers.formatEther(balance),
+    "tRBTC"
+  );
 
-  const mockAddress = await mockPriceFeed.getAddress();
-  console.log("MockPriceFeed deployed to:", mockAddress);
+  /*
+    STEP 1 — Deploy MockPriceFeed
+  */
 
-  // OPTIONAL: set initial price (important!)
-  await mockPriceFeed.setPrice(3000000000000);
+  const MockPriceFeed =
+    await ethers.getContractFactory(
+      "MockPriceFeed"
+    );
 
-  // 2️deploy RangeZone with mock address
-  const RangeZone = await ethers.getContractFactory("RangeZone");
-  const rangeZone = await RangeZone.deploy(mockAddress);
+  const mock =
+    await MockPriceFeed.deploy();
+
+  await mock.waitForDeployment();
+
+  const mockAddress =
+    await mock.getAddress();
+
+  console.log(
+    "MockPriceFeed deployed to:",
+    mockAddress
+  );
+
+  /*
+    STEP 2 — Deploy RangeZone
+  */
+
+  const MAX_PRICE_AGE =
+    14n * 24n * 60n * 60n; // 14 days
+
+  const RangeZone =
+    await ethers.getContractFactory(
+      "RangeZone"
+    );
+
+  const rangeZone =
+    await RangeZone.deploy(
+      mockAddress,
+      MAX_PRICE_AGE
+    );
+
   await rangeZone.waitForDeployment();
 
-  console.log("RangeZone deployed to:", await rangeZone.getAddress());
-  console.log("Using Mock Price Feed:", mockAddress);
+  const rangeZoneAddress =
+    await rangeZone.getAddress();
+
+  console.log(
+    "RangeZone deployed to:",
+    rangeZoneAddress
+  );
+
+  console.log(
+    "Using MockPrice:",
+    mockAddress
+  );
+
+  console.log(
+    "Max price age:",
+    MAX_PRICE_AGE,
+    "seconds"
+  );
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
-

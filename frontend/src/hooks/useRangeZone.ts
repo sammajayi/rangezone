@@ -441,6 +441,7 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
 // Minimum gas price on RSK Testnet is 0.06 gwei (60_000_000 wei).
 const RSK_GAS_PRICE = 65_000_000n; // 0.065 gwei — safe above the minimum
 
+
 export function useStake() {
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
@@ -498,9 +499,13 @@ export function useClaim() {
 
 export function useCreateMarket() {
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash }
+  });
 
   const createMarket = (durationSeconds: number, threshold1: number, threshold2: number) => {
+    console.log("Creating market with:", { durationSeconds, threshold1, threshold2 });
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
@@ -511,8 +516,19 @@ export function useCreateMarket() {
     });
   };
 
-  return { createMarket, hash, isPending, isConfirming, isSuccess, error: receiptError || writeError };
+  const error = receiptError || writeError;
+  if (error) {
+    console.error("CreateMarket error:", {
+      error: error.toString(),
+      message: error.message,
+      cause: (error as any).cause,
+      code: (error as any).code
+    });
+  }
+
+  return { createMarket, hash, isPending, isConfirming, isSuccess, error };
 }
+
 
 export function useWithdrawFee() {
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();

@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAccount } from "wagmi";
 import { TrendingUp, History, BookOpen, Trophy, X } from "lucide-react";
 import Leaderboard from "./leaderboard";
@@ -77,7 +78,7 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-16 bottom-0 w-72 bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)] border-r border-[rgba(15,23,42,0.12)] overflow-y-auto transition-transform duration-300 ease-in-out z-40 lg:static lg:w-96 lg:top-auto lg:bottom-auto lg:border-r border-r-[rgba(15,23,42,0.08)] shadow-lg lg:shadow-none ${
+        className={`fixed left-0 top-16 bottom-0 w-72 bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)] border-r border-[rgba(15,23,42,0.12)] overflow-y-auto transition-transform duration-300 ease-in-out z-40 lg:static lg:top-0 lg:w-96 lg:border-r lg:border-r-[rgba(15,23,42,0.08)] lg:shadow-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
@@ -91,6 +92,12 @@ export default function Sidebar() {
             <X size={20} />
           </button>
 
+          {/* Logo - desktop only */}
+          <Link href="/" className="hidden lg:inline-flex items-center gap-2 no-underline text-[#0f172a] font-semibold border border-gray-200 rounded-lg p-10 mx-auto">
+            <Image src="/rangezone-logo.svg" alt="RangeZone Logo" width={60} height={60} className="w-10 h-10" />
+            <span className="font-bold">RangeZone</span>
+          </Link>
+
           {/* User Stats Section */}
           {isConnected ? (
             <div className="space-y-3">
@@ -102,9 +109,9 @@ export default function Sidebar() {
                     {formatRbtc(userStats.totalStaked)}
                   </p>
                 </div>
-                <div className="border border-green-400 rounded-lg p-3 bg-gradient-to-br from-green-50 to-transparent hover:shadow-md transition-shadow">
+                <div className="border border-orange-500 rounded-lg p-3 bg-gradient-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
                   <p className="text-xs text-[#64748b] mb-1 font-semibold">Winnings</p>
-                  <p className="text-base font-bold text-green-600">
+                  <p className="text-base font-bold text-orange-600">
                     {formatRbtc(userStats.totalWinnings)}
                   </p>
                 </div>
@@ -123,9 +130,9 @@ export default function Sidebar() {
                     {formatRbtc(userStats.profit)}
                   </p>
                 </div>
-                <div className="border border-[#6366f1] rounded-lg p-3 bg-gradient-to-br from-[#6366f1]/10 to-transparent hover:shadow-md transition-shadow">
+                <div className="border border-orange-400 rounded-lg p-3 bg-gradient-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
                   <p className="text-xs text-[#64748b] mb-1 font-semibold">Active</p>
-                  <p className="text-base font-bold text-[#0f172a]">
+                  <p className="text-base font-bold text-orange-600">
                     {userStats.activeMarkets}
                   </p>
                 </div>
@@ -133,7 +140,7 @@ export default function Sidebar() {
             </div>
           ) : (
             <div className="border-2 border-dashed border-[#6366f1] rounded-lg p-4 bg-[#6366f1]/5 text-center">
-              <p className="text-xs text-[#64748b] font-medium">Connect wallet to see your stats</p>
+              <p className="text-xs text-[#64748b] font-medium">Connect wallet</p>
             </div>
           )}
 

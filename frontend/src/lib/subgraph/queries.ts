@@ -50,6 +50,15 @@ export const GET_LEADERBOARD = gql`
       amount
       marketId
     }
+    claimeds(
+      orderBy: blockNumber
+      orderDirection: desc
+      first: 10000
+    ) {
+      user
+      amount
+      marketId
+    }
   }
 `;
 

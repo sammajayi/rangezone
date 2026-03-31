@@ -52,7 +52,7 @@ export function useUserStakesFromSubgraph(userAddress?: string) {
     skip: !userAddress,
   });
 
-  const stakes = (data?.stakeds || []) as StakeEvent[];
+  const stakes = (data as any)?.stakeds || [] as StakeEvent[];
 
   return { stakes, loading, error };
 }
@@ -67,7 +67,7 @@ export function useUserClaimsFromSubgraph(userAddress?: string) {
     skip: !userAddress,
   });
 
-  const claims = (data?.claimeds || []) as ClaimEvent[];
+  const claims = (data as any)?.claimeds || [] as ClaimEvent[];
 
   return { claims, loading, error };
 }
@@ -80,7 +80,7 @@ export function useUserTransactionHistory(userAddress?: string) {
   const { claims, loading: claimsLoading } = useUserClaimsFromSubgraph(userAddress);
 
   const transactions: UserTransaction[] = [
-    ...stakes.map((stake) => ({
+    ...stakes.map((stake: StakeEvent) => ({
       type: "stake" as const,
       marketId: stake.marketId,
       bracket: stake.bracket,
@@ -89,7 +89,7 @@ export function useUserTransactionHistory(userAddress?: string) {
       blockTimestamp: stake.blockTimestamp,
       txHash: stake.transactionHash,
     })),
-    ...claims.map((claim) => ({
+    ...claims.map((claim: ClaimEvent) => ({
       type: "claim" as const,
       marketId: claim.marketId,
       amount: claim.amount,
@@ -119,16 +119,27 @@ export function useLeaderboardFromSubgraph() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
 
   useEffect(() => {
-    if (data?.stakeds) {
-      // Aggregate stakes by user
+    if ((data as any)?.stakeds && (data as any)?.claimeds) {
+      // Aggregate stakes and claims by user
       const userMap = new Map<string, { staked: bigint; claimed: bigint }>();
 
-      (data.stakeds as StakeEvent[]).forEach((stake) => {
+      // Process stakes
+      ((data as any).stakeds as StakeEvent[]).forEach((stake) => {
         const user = stake.user.toLowerCase();
         const current = userMap.get(user) || { staked: 0n, claimed: 0n };
         userMap.set(user, {
           staked: current.staked + BigInt(stake.amount),
           claimed: current.claimed,
+        });
+      });
+
+      // Process claims
+      ((data as any).claimeds as ClaimEvent[]).forEach((claim) => {
+        const user = claim.user.toLowerCase();
+        const current = userMap.get(user) || { staked: 0n, claimed: 0n };
+        userMap.set(user, {
+          staked: current.staked,
+          claimed: current.claimed + BigInt(claim.amount),
         });
       });
 

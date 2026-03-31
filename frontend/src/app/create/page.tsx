@@ -23,12 +23,13 @@ export default function CreateMarketPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
-  const { data: owner } = useContractOwner();
+  const { data: owner, isLoading: ownerLoading } = useContractOwner();
   const { data: marketCount } = useMarketCount();
   const { createMarket, isPending, isConfirming, isSuccess, error } = useCreateMarket();
 
   const isWrongNetwork = isConnected && chainId !== RSK_TESTNET_CHAIN_ID;
   const isOwner = isConnected && owner && address && owner.toLowerCase() === address.toLowerCase();
+  const isOwnerCheckPending = isConnected && !owner && ownerLoading;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [duration, setDuration] = useState(DURATION_OPTIONS[3].seconds);
@@ -65,6 +66,13 @@ export default function CreateMarketPage() {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!thresholdsValid) return;
+    console.log("Submitting createMarket with:", {
+      duration: DURATION_OPTIONS.find(o => o.seconds === duration)?.label,
+      threshold1: t1,
+      threshold2: t2,
+      isOwner,
+      address,
+    });
     createMarket(duration, t1, t2);
   }
 
@@ -93,7 +101,7 @@ export default function CreateMarketPage() {
     return (
       <main className="max-w-180 mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold mb-2">Create market</h1>
-        <p className="text-[#64748b]">Once we go live on mainnet, you'll be able to create markets.</p>
+        <p className="text-[#64748b]">Only the contract owner can create markets.</p>
       </main>
     );
   }
@@ -177,7 +185,7 @@ export default function CreateMarketPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
               >
                 Next
               </button>
@@ -249,7 +257,7 @@ export default function CreateMarketPage() {
                 type="button"
                 onClick={handleNext}
                 disabled={!thresholdsValid}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
               >
                 Next
               </button>
@@ -310,6 +318,7 @@ export default function CreateMarketPage() {
                 </button>
               )}
               <input
+              title="file"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -336,7 +345,34 @@ export default function CreateMarketPage() {
 
             {error && (
               <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {(error as any)?.shortMessage ?? error?.message ?? "Transaction failed"}
+                <p className="font-semibold mb-1">Transaction failed</p>
+                <p className="text-xs mb-2">{(error as any)?.shortMessage ?? error?.message ?? "Unknown error occurred"}</p>
+
+                {error?.message?.includes("Price too old") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Price feed is too old</p>
+                    <p>The oracle price must be less than 24 hours old. This is a temporary issue with the price feed.</p>
+                  </div>
+                )}
+
+                {error?.message?.includes("Invalid price") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Invalid price from oracle</p>
+                    <p>The price feed returned an invalid price. Please try again.</p>
+                  </div>
+                )}
+
+                {error?.message?.includes("Only owner") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Only the contract owner can create markets</p>
+                  </div>
+                )}
+
+                {!error?.message?.includes("Price") && !error?.message?.includes("owner") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p>Check the browser console (F12) for more details</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -351,10 +387,10 @@ export default function CreateMarketPage() {
               </button>
               <button
                 type="submit"
-                disabled={!thresholdsValid || isPending || isConfirming || isSuccess || isWrongNetwork}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!thresholdsValid || isPending || isConfirming || isSuccess || isWrongNetwork || isOwnerCheckPending || !isOwner}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isPending || isConfirming ? "Creating…" : "Create Market"}
+                {isOwnerCheckPending ? "Checking ownership…" : isPending || isConfirming ? "Creating…" : "Create Market"}
               </button>
             </div>
           </div>

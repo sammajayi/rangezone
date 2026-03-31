@@ -6,7 +6,7 @@ import { useLeaderboardFromSubgraph } from "../hooks/useSubgraph";
 import { formatRbtc } from "../lib/rangeZoneContract";
 
 // Dummy leaderboard data for demonstration (fallback when subgraph not available)
-const DUMMY_LEADERBOARD = [
+const DUMMY_LEADERBOARD: Array<{ address: string; totalStaked: bigint; totalClaimed: bigint }> = [
   // { address: "0x742d35Cc6634C0532925a3b844Bc2e7c1d4a0b9f", totalStaked: BigInt("50000000000000000000"), totalClaimed: BigInt("75000000000000000000") },
   // { address: "0x8ba1f109551bD432803012645Ac136ddd64DBA72", totalStaked: BigInt("35000000000000000000"), totalClaimed: BigInt("52500000000000000000") },
   // { address: "0x9de8d524aEd2c73ce46b725f21fe547ab5db1b59", totalStaked: BigInt("28000000000000000000"), totalClaimed: BigInt("42000000000000000000") },
@@ -54,7 +54,7 @@ export default function Leaderboard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
         <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wide">Top Stakers</p>
-        <span className="px-2 py-1 text-xs font-semibold text-white bg-gradient-to-r from-[#6366f1] to-blue-500 rounded-full">Top 10</span>
+        <span className="px-2 py-1 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-full">Top 10</span>
       </div>
       <div className="border border-[rgba(15,23,42,0.12)] rounded-lg overflow-hidden bg-white shadow-sm">
         {leaderboard.length === 0 ? (
