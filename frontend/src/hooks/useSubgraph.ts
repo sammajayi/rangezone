@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from "@apollo/client";
-import { client } from "./client";
-import { GET_USER_STAKES, GET_USER_CLAIMS, GET_LEADERBOARD } from "./queries";
+import { useQuery } from "@apollo/client/react";
+import { client } from "../lib/subgraph/client";
+import { GET_USER_STAKES, GET_USER_CLAIMS, GET_LEADERBOARD } from "../lib/subgraph/queries";
 import { useState, useEffect } from "react";
 
 export interface StakeEvent {

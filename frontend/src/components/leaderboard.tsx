@@ -7,16 +7,16 @@ import { formatRbtc } from "../lib/rangeZoneContract";
 
 // Dummy leaderboard data for demonstration (fallback when subgraph not available)
 const DUMMY_LEADERBOARD = [
-  { address: "0x742d35Cc6634C0532925a3b844Bc2e7c1d4a0b9f", totalStaked: BigInt("50000000000000000000"), totalClaimed: BigInt("75000000000000000000") },
-  { address: "0x8ba1f109551bD432803012645Ac136ddd64DBA72", totalStaked: BigInt("35000000000000000000"), totalClaimed: BigInt("52500000000000000000") },
-  { address: "0x9de8d524aEd2c73ce46b725f21fe547ab5db1b59", totalStaked: BigInt("28000000000000000000"), totalClaimed: BigInt("42000000000000000000") },
-  { address: "0x1234567890123456789012345678901234567890", totalStaked: BigInt("22000000000000000000"), totalClaimed: BigInt("33000000000000000000") },
-  { address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", totalStaked: BigInt("18000000000000000000"), totalClaimed: BigInt("27000000000000000000") },
-  { address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", totalStaked: BigInt("15000000000000000000"), totalClaimed: BigInt("22500000000000000000") },
-  { address: "0x1111111111111111111111111111111111111111", totalStaked: BigInt("12000000000000000000"), totalClaimed: BigInt("18000000000000000000") },
-  { address: "0x2222222222222222222222222222222222222222", totalStaked: BigInt("10000000000000000000"), totalClaimed: BigInt("15000000000000000000") },
-  { address: "0x3333333333333333333333333333333333333333", totalStaked: BigInt("8000000000000000000"), totalClaimed: BigInt("12000000000000000000") },
-  { address: "0x4444444444444444444444444444444444444444", totalStaked: BigInt("6000000000000000000"), totalClaimed: BigInt("9000000000000000000") },
+  // { address: "0x742d35Cc6634C0532925a3b844Bc2e7c1d4a0b9f", totalStaked: BigInt("50000000000000000000"), totalClaimed: BigInt("75000000000000000000") },
+  // { address: "0x8ba1f109551bD432803012645Ac136ddd64DBA72", totalStaked: BigInt("35000000000000000000"), totalClaimed: BigInt("52500000000000000000") },
+  // { address: "0x9de8d524aEd2c73ce46b725f21fe547ab5db1b59", totalStaked: BigInt("28000000000000000000"), totalClaimed: BigInt("42000000000000000000") },
+  // { address: "0x1234567890123456789012345678901234567890", totalStaked: BigInt("22000000000000000000"), totalClaimed: BigInt("33000000000000000000") },
+  // { address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", totalStaked: BigInt("18000000000000000000"), totalClaimed: BigInt("27000000000000000000") },
+  // { address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", totalStaked: BigInt("15000000000000000000"), totalClaimed: BigInt("22500000000000000000") },
+  // { address: "0x1111111111111111111111111111111111111111", totalStaked: BigInt("12000000000000000000"), totalClaimed: BigInt("18000000000000000000") },
+  // { address: "0x2222222222222222222222222222222222222222", totalStaked: BigInt("10000000000000000000"), totalClaimed: BigInt("15000000000000000000") },
+  // { address: "0x3333333333333333333333333333333333333333", totalStaked: BigInt("8000000000000000000"), totalClaimed: BigInt("12000000000000000000") },
+  // { address: "0x4444444444444444444444444444444444444444", totalStaked: BigInt("6000000000000000000"), totalClaimed: BigInt("9000000000000000000") },
 ];
 
 export default function Leaderboard() {
@@ -24,11 +24,11 @@ export default function Leaderboard() {
   const { leaderboard: subgraphLeaderboard, loading: subgraphLoading } = useLeaderboardFromSubgraph();
 
   const leaderboard = useMemo(() => {
-    // If subgraph data available, use it
+
     if (subgraphLeaderboard && subgraphLeaderboard.length > 0) {
       return subgraphLeaderboard;
     }
-    // Fallback to dummy data
+   
     return DUMMY_LEADERBOARD.map((user) => ({
       address: user.address,
       totalStaked: user.totalStaked,

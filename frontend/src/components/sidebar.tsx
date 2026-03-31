@@ -15,7 +15,7 @@ const DUMMY_USER_STATS = {
   totalStaked: BigInt("5000000000000000000"), // 5 tRBTC
   totalWinnings: BigInt("7500000000000000000"), // 7.5 tRBTC
   profit: BigInt("2500000000000000000"), // 2.5 tRBTC
-  activeMarkets: 3,
+  activeMarkets: 1,
 };
 
 export default function Sidebar() {
@@ -25,7 +25,7 @@ export default function Sidebar() {
   const { entries } = useAllMarkets();
   const { sidebarOpen, closeSidebar } = useSidebar();
 
-  // Use subgraph transactions if available, fallback to legacy transactions
+  
   const transactions = subgraphTransactions.length > 0 ? subgraphTransactions : legacyTransactions;
 
   // Calculate user stats from real data, fallback to dummy data

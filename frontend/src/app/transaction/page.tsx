@@ -73,7 +73,7 @@ export default function TransactionPage() {
 
   if (!isConnected) {
     return (
-      <main className="max-w-[1200px] mx-auto px-4 py-8">
+      <main className="max-w-300 mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <header className="mb-6">
             <h1 className="text-2xl font-semibold mb-2">Transaction History</h1>
@@ -89,7 +89,7 @@ export default function TransactionPage() {
   }
 
   return (
-    <main className="max-w-[1200px] mx-auto px-4 py-8">
+    <main className="max-w-300 mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <header className="mb-8">
           <Link
