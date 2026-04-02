@@ -74,8 +74,14 @@ The market duration is passed as a parameter in seconds rather than being hardco
 --
 ### Deployed Contract
 
+#### Old Contract
+
 MockPriceFeed: 0xD97Fd22fbAd4851759bA933811a66b9a9C385dA1
 RangeZone: 0x73689f97092c0b27DDd90cd59b14Ca691dE754D7
+
+#### New Contract
+RangeZone: 0x3dcDc6FbE53dD8c55F53EA0653f22787E9FFCe36
+MockPrice: 0xD2b7A578BAe996E2bB040B827cE9C26e4EC34342
 --
 
 ---
@@ -105,3 +111,9 @@ npx hardhat test
 ```bash
 npx hardhat run scripts/deploy.ts --network rskTestnet
 ```
+
+
+
+
+
+g

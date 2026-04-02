@@ -1,5 +1,7 @@
 import { defineChain } from "viem";
 
+// RSK Testnet does not support EIP-1559 (no baseFee / maxFeePerGas).
+// All transactions must use legacy gas pricing with a minimum of 0.06 gwei.
 export const rsktestnet = defineChain({
   id: 31,
   name: "Rootstock Testnet",
@@ -21,5 +23,9 @@ export const rsktestnet = defineChain({
       address: "0xca11bde05977b3631167028862be2a173976ca11",
       blockCreated: 2771150,
     },
+  },
+  fees: {
+    // Force legacy gas — RSK does not use EIP-1559 priority fees
+    defaultPriorityFee: 0n,
   },
 });

@@ -339,6 +339,15 @@ async function fetchLogsWithFallback(
     return await client.getLogs({ ...params, fromBlock: 0n, toBlock: "latest" } as any);
   } catch (e: any) {
     const msg = e?.message ?? "";
+
+    // Check if method doesn't exist (RSK doesn't support eth_getLogs)
+    const isMethodNotSupported = msg.includes("does not exist") || msg.includes("is not available");
+    if (isMethodNotSupported) {
+      console.warn("getLogs method not supported by RPC provider, returning empty results");
+      return [];
+    }
+
+    // Check for block range errors
     const isRangeError =
       msg.includes("block range") ||
       msg.includes("too large") ||
@@ -428,9 +437,14 @@ export function useUserTransactions(userAddress: `0x${string}` | undefined) {
   return { transactions, isLoading, error };
 }
 
+// RSK Testnet does not support EIP-1559 — use legacy gas pricing.
+// Minimum gas price on RSK Testnet is 0.06 gwei (60_000_000 wei).
+const RSK_GAS_PRICE = 65_000_000n; // 0.065 gwei — safe above the minimum
+
+
 export function useStake() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
 
   const stake = (marketId: bigint, bracket: number, amountEth: string) => {
     writeContract({
@@ -439,15 +453,17 @@ export function useStake() {
       functionName: "stake",
       args: [marketId, bracket as 0 | 1 | 2],
       value: parseEther(amountEth),
+      chainId: RSK_TESTNET_CHAIN_ID,
+      gasPrice: RSK_GAS_PRICE,
     });
   };
 
-  return { stake, hash, isPending, isConfirming, isSuccess, error };
+  return { stake, hash, isPending, isConfirming, isSuccess, error: receiptError || writeError };
 }
 
 export function useResolve() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
 
   const resolve = (marketId: bigint) => {
     writeContract({
@@ -455,15 +471,17 @@ export function useResolve() {
       abi: RANGE_ZONE_ABI,
       functionName: "resolve",
       args: [marketId],
+      chainId: RSK_TESTNET_CHAIN_ID,
+      gasPrice: RSK_GAS_PRICE,
     });
   };
 
-  return { resolve, hash, isPending, isConfirming, isSuccess, error };
+  return { resolve, hash, isPending, isConfirming, isSuccess, error: receiptError || writeError };
 }
 
 export function useClaim() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
 
   const claim = (marketId: bigint) => {
     writeContract({
@@ -471,39 +489,60 @@ export function useClaim() {
       abi: RANGE_ZONE_ABI,
       functionName: "claim",
       args: [marketId],
+      chainId: RSK_TESTNET_CHAIN_ID,
+      gasPrice: RSK_GAS_PRICE,
     });
   };
 
-  return { claim, hash, isPending, isConfirming, isSuccess, error };
+  return { claim, hash, isPending, isConfirming, isSuccess, error: receiptError || writeError };
 }
 
 export function useCreateMarket() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash }
+  });
 
   const createMarket = (durationSeconds: number, threshold1: number, threshold2: number) => {
+    console.log("Creating market with:", { durationSeconds, threshold1, threshold2 });
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
       functionName: "createMarket",
       args: [BigInt(durationSeconds), BigInt(threshold1), BigInt(threshold2)],
+      chainId: RSK_TESTNET_CHAIN_ID,
+      gasPrice: RSK_GAS_PRICE,
     });
   };
+
+  const error = receiptError || writeError;
+  if (error) {
+    console.error("CreateMarket error:", {
+      error: error.toString(),
+      message: error.message,
+      cause: (error as any).cause,
+      code: (error as any).code
+    });
+  }
 
   return { createMarket, hash, isPending, isConfirming, isSuccess, error };
 }
 
+
 export function useWithdrawFee() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({ hash });
 
   const withdrawFee = () => {
     writeContract({
       address: RANGE_ZONE_ADDRESS,
       abi: RANGE_ZONE_ABI,
       functionName: "withdrawFee",
+      chainId: RSK_TESTNET_CHAIN_ID,
+      gasPrice: RSK_GAS_PRICE,
     });
   };
 
-  return { withdrawFee, hash, isPending, isConfirming, isSuccess, error };
+  return { withdrawFee, hash, isPending, isConfirming, isSuccess, error: receiptError || writeError };
 }

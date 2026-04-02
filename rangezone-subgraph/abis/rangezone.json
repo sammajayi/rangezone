@@ -1,0 +1,337 @@
+[
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_priceFeed", "type": "address" },
+      { "internalType": "uint256", "name": "_maxPriceAge", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  { "inputs": [], "name": "ReentrancyGuardReentrantCall", "type": "error" },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "marketId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Claimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "marketId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "int256",
+        "name": "startPrice",
+        "type": "int256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiry",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "threshold1",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "threshold2",
+        "type": "uint256"
+      }
+    ],
+    "name": "MarketCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "marketId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "winningBracket",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "int256",
+        "name": "endPrice",
+        "type": "int256"
+      }
+    ],
+    "name": "Resolved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "marketId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "bracket",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Staked",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "FEE",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulatedFee",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "uint8", "name": "", "type": "uint8" }
+    ],
+    "name": "bracketTotals",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_marketId", "type": "uint256" }
+    ],
+    "name": "claim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_duration", "type": "uint256" },
+      { "internalType": "uint256", "name": "_threshold1", "type": "uint256" },
+      { "internalType": "uint256", "name": "_threshold2", "type": "uint256" }
+    ],
+    "name": "createMarket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCurrentMarket",
+    "outputs": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      {
+        "components": [
+          { "internalType": "int256", "name": "startPrice", "type": "int256" },
+          { "internalType": "int256", "name": "endPrice", "type": "int256" },
+          { "internalType": "uint256", "name": "expiry", "type": "uint256" },
+          { "internalType": "uint256", "name": "totalPool", "type": "uint256" },
+          {
+            "internalType": "uint8",
+            "name": "winningBracket",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum RangeZone.MarketState",
+            "name": "state",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "threshold1",
+            "type": "uint256"
+          },
+          { "internalType": "uint256", "name": "threshold2", "type": "uint256" }
+        ],
+        "internalType": "struct RangeZone.Market",
+        "name": "m",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_marketId", "type": "uint256" }
+    ],
+    "name": "getMarket",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "int256", "name": "startPrice", "type": "int256" },
+          { "internalType": "int256", "name": "endPrice", "type": "int256" },
+          { "internalType": "uint256", "name": "expiry", "type": "uint256" },
+          { "internalType": "uint256", "name": "totalPool", "type": "uint256" },
+          {
+            "internalType": "uint8",
+            "name": "winningBracket",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum RangeZone.MarketState",
+            "name": "state",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "threshold1",
+            "type": "uint256"
+          },
+          { "internalType": "uint256", "name": "threshold2", "type": "uint256" }
+        ],
+        "internalType": "struct RangeZone.Market",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "marketCount",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "name": "markets",
+    "outputs": [
+      { "internalType": "int256", "name": "startPrice", "type": "int256" },
+      { "internalType": "int256", "name": "endPrice", "type": "int256" },
+      { "internalType": "uint256", "name": "expiry", "type": "uint256" },
+      { "internalType": "uint256", "name": "totalPool", "type": "uint256" },
+      { "internalType": "uint8", "name": "winningBracket", "type": "uint8" },
+      {
+        "internalType": "enum RangeZone.MarketState",
+        "name": "state",
+        "type": "uint8"
+      },
+      { "internalType": "uint256", "name": "threshold1", "type": "uint256" },
+      { "internalType": "uint256", "name": "threshold2", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxPriceAge",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "priceFeed",
+    "outputs": [
+      {
+        "internalType": "contract AggregatorV3Interface",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_marketId", "type": "uint256" }
+    ],
+    "name": "resolve",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_marketId", "type": "uint256" },
+      { "internalType": "uint8", "name": "_bracket", "type": "uint8" }
+    ],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "uint8", "name": "", "type": "uint8" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "stakes",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

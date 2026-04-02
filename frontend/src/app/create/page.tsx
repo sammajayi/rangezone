@@ -23,15 +23,16 @@ export default function CreateMarketPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
-  const { data: owner } = useContractOwner();
+  const { data: owner, isLoading: ownerLoading } = useContractOwner();
   const { data: marketCount } = useMarketCount();
   const { createMarket, isPending, isConfirming, isSuccess, error } = useCreateMarket();
 
   const isWrongNetwork = isConnected && chainId !== RSK_TESTNET_CHAIN_ID;
   const isOwner = isConnected && owner && address && owner.toLowerCase() === address.toLowerCase();
+  const isOwnerCheckPending = isConnected && !owner && ownerLoading;
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [duration, setDuration] = useState(DURATION_OPTIONS[3].seconds);
+  const [duration, setDuration] = useState(DURATION_OPTIONS[0].seconds);
   const [threshold1, setThreshold1] = useState("3");
   const [threshold2, setThreshold2] = useState("7");
   const [question, setQuestion] = useState("");
@@ -41,12 +42,18 @@ export default function CreateMarketPage() {
   useEffect(() => {
     if (isSuccess) {
       const newId = (Number(marketCount ?? 0n) + 1).toString();
-      if (question.trim()) {
-        localStorage.setItem(`market_question_${newId}`, question.trim());
-      }
-      if (imageDataUrl) {
-        localStorage.setItem(`market_image_${newId}`, imageDataUrl);
-      }
+
+      // Save metadata to API
+      fetch("/api/market-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marketId: newId,
+          question: question.trim() || null,
+          image: imageDataUrl || null,
+        }),
+      }).catch(err => console.error("Error saving market metadata:", err));
+
       setTimeout(() => router.push("/"), 2000);
     }
   }, [isSuccess]);
@@ -54,7 +61,6 @@ export default function CreateMarketPage() {
   const t1 = Number(threshold1);
   const t2 = Number(threshold2);
   const thresholdsValid = t1 > 0 && t2 > t1;
-  const questionValid = question.trim().length > 0;
 
   function handleNext() {
     if (currentStep < 3) setCurrentStep(currentStep + 1);
@@ -66,6 +72,13 @@ export default function CreateMarketPage() {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!thresholdsValid) return;
+    console.log("Submitting createMarket with:", {
+      duration: DURATION_OPTIONS.find(o => o.seconds === duration)?.label,
+      threshold1: t1,
+      threshold2: t2,
+      isOwner,
+      address,
+    });
     createMarket(duration, t1, t2);
   }
 
@@ -94,7 +107,7 @@ export default function CreateMarketPage() {
     return (
       <main className="max-w-180 mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold mb-2">Create market</h1>
-        <p className="text-[#64748b]">Once we go live on mainnet, you'll be able to create markets.</p>
+        <p className="text-[#64748b]">Only the contract owner can create markets.</p>
       </main>
     );
   }
@@ -126,7 +139,7 @@ export default function CreateMarketPage() {
               <div className="flex flex-col items-center">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                    currentStep >= step ? "bg-[#0f172a] text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
+                    currentStep >= step ? "bg-orange-500 text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
                   }`}
                 >
                   {step}
@@ -138,7 +151,7 @@ export default function CreateMarketPage() {
               {index < 2 && (
                 <div
                   className={`h-1 flex-1 mx-2 mb-4 transition-colors ${
-                    currentStep > step ? "bg-[#0f172a]" : "bg-[rgba(15,23,42,0.08)]"
+                    currentStep > step ? "bg-orange-500" : "bg-[rgba(15,23,42,0.08)]"
                   }`}
                 />
               )}
@@ -178,7 +191,7 @@ export default function CreateMarketPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
               >
                 Next
               </button>
@@ -250,7 +263,7 @@ export default function CreateMarketPage() {
                 type="button"
                 onClick={handleNext}
                 disabled={!thresholdsValid}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
               >
                 Next
               </button>
@@ -260,15 +273,18 @@ export default function CreateMarketPage() {
 
         {/* Step 3: Question + Image + Confirm */}
         {currentStep === 3 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-1">Market Question & Image</h2>
-            <p className="text-sm text-[#64748b] mb-4">
-              Write a clear question that describes what this market is predicting. Optionally add a cover image (128×128).
-            </p>
+          <div className="space-y-6">
+            <div className="mb-6 pb-6 border-b border-[rgba(15,23,42,0.12)]">
+              <h2 className="text-2xl font-bold mb-2">Market Question & Image</h2>
+              <p className="text-sm text-[#64748b]">
+                Write a clear question that describes what this market is predicting. Optionally add a cover image.
+              </p>
+            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="question">
-                Market question
+            {/* Question Section */}
+            <div className="border-2 border-[#6366f1]/30 rounded-lg p-5 bg-[#6366f1]/5">
+              <label className="block text-sm font-semibold mb-3 text-[#0f172a]" htmlFor="question">
+                Market Question <span className="text-[#94a3b8] font-normal text-xs">(optional)</span>
               </label>
               <input
                 id="question"
@@ -276,57 +292,96 @@ export default function CreateMarketPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder={`e.g. Will BTC be between ${threshold1}% and ${threshold2}% by ${selectedDurationLabel} from now?`}
-                className="w-full border border-[rgba(15,23,42,0.12)] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#6366f1] text-sm"
+                className="w-full border border-[rgba(15,23,42,0.12)] rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-[#6366f1] text-base mb-3"
                 maxLength={120}
               />
-              <p className="text-xs text-[#94a3b8] mt-1">{question.length}/120 characters</p>
+              <p className="text-xs text-[#94a3b8] font-medium">{question.length}/120 characters</p>
             </div>
 
-            {/* Image upload */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Market image (optional)</label>
+            {/* Image Upload Section */}
+            <div className="border-2 border-[#6366f1]/30 rounded-lg p-5 bg-[#6366f1]/5">
+              <label className="block text-sm font-semibold mb-4 text-[#0f172a]">Market Image <span className="text-[#94a3b8] font-normal text-xs">(optional)</span></label>
               {imageDataUrl ? (
-                <div className="flex items-center gap-4">
-                  <img
-                    src={imageDataUrl}
-                    alt="Market preview"
-                    className="w-32 h-32 rounded-xl object-cover border border-[rgba(15,23,42,0.12)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 font-medium"
-                  >
-                    <X size={14} /> Remove image
-                  </button>
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="relative">
+                    <img
+                      src={imageDataUrl}
+                      alt="Market preview"
+                      className="w-40 h-40 rounded-lg object-cover border-2 border-[#6366f1]/50"
+                    />
+                    <div className="absolute inset-0 rounded-lg border-2 border-green-400 flex items-center justify-center">
+                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">✓ Ready</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-green-700 mb-2">✓ Image uploaded successfully</p>
+                      <p className="text-xs text-[#64748b]">Your cover image is ready for the market</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 font-medium w-fit mt-4 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      <X size={16} /> Remove image
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 border-2 border-dashed border-[rgba(15,23,42,0.12)] rounded-xl px-5 py-4 text-sm text-[#64748b] hover:border-[#6366f1] hover:text-[#6366f1] transition-colors"
+                  className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[#6366f1]/50 rounded-lg px-6 py-10 text-center hover:border-[#6366f1] hover:bg-[#6366f1]/10 transition-colors cursor-pointer"
                 >
-                  <ImagePlus size={18} />
-                  Upload image (PNG, JPG, GIF — displayed at 128×128)
+                  <ImagePlus size={32} className="text-[#6366f1]" />
+                  <div>
+                    <div className="font-semibold text-[#0f172a] text-base">Click to upload image</div>
+                    <div className="text-xs text-[#64748b] mt-1">PNG, JPG, GIF (128×128 recommended)</div>
+                  </div>
                 </button>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                title="Upload market image"
                 className="hidden"
                 onChange={handleImageChange}
               />
             </div>
 
             {/* Summary */}
-            <div className="bg-[rgba(15,23,42,0.03)] rounded-lg p-4 text-sm space-y-1">
-              <p className="font-semibold text-[#0f172a] mb-2">Market Summary</p>
-              <p className="text-[#64748b]">Question: <strong>{question || "—"}</strong></p>
-              <p className="text-[#64748b]">Duration: <strong>{selectedDurationLabel}</strong></p>
-              <p className="text-[#64748b]">Bracket 0: price moves &lt; {threshold1}%</p>
-              <p className="text-[#64748b]">Bracket 1: price moves {threshold1}% – {threshold2}%</p>
-              <p className="text-[#64748b]">Bracket 2: price moves &gt; {threshold2}%</p>
+            <div className="bg-linear-to-br from-[#6366f1]/10 via-transparent to-transparent border-2 border-[#6366f1]/30 rounded-lg p-6 space-y-3">
+              <p className="font-bold text-[#0f172a] mb-4 flex items-center gap-2 text-base">
+                <span className="text-xl">📋</span> Market Summary
+              </p>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-start gap-4 py-2 border-b border-[#6366f1]/20">
+                  <span className="text-[#64748b] font-medium">Question:</span>
+                  <span className="text-[#0f172a] font-semibold text-right max-w-xs">{question || "—"}</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-2 border-b border-[#6366f1]/20">
+                  <span className="text-[#64748b] font-medium">Image:</span>
+                  <span className="text-[#0f172a] font-semibold text-right">{imageDataUrl ? "✓ Added" : "—"}</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-2">
+                  <span className="text-[#64748b] font-medium">Duration:</span>
+                  <span className="text-[#0f172a] font-semibold">{selectedDurationLabel}</span>
+                </div>
+                <div className="border-t border-[#6366f1]/30 my-3 pt-3"></div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 0:</span>
+                  <span className="text-[#0f172a] text-xs">&lt; {threshold1}%</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 1:</span>
+                  <span className="text-[#0f172a] text-xs">{threshold1}% – {threshold2}%</span>
+                </div>
+                <div className="flex justify-between items-start gap-4 py-1">
+                  <span className="text-[#64748b] font-medium">Bracket 2:</span>
+                  <span className="text-[#0f172a] text-xs">&gt; {threshold2}%</span>
+                </div>
+              </div>
             </div>
 
             {isSuccess && (
@@ -337,7 +392,34 @@ export default function CreateMarketPage() {
 
             {error && (
               <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {(error as any)?.shortMessage ?? error?.message ?? "Transaction failed"}
+                <p className="font-semibold mb-1">Transaction failed</p>
+                <p className="text-xs mb-2">{(error as any)?.shortMessage ?? error?.message ?? "Unknown error occurred"}</p>
+
+                {error?.message?.includes("Price too old") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Price feed is too old</p>
+                    <p>The oracle price must be less than 24 hours old. This is a temporary issue with the price feed.</p>
+                  </div>
+                )}
+
+                {error?.message?.includes("Invalid price") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Invalid price from oracle</p>
+                    <p>The price feed returned an invalid price. Please try again.</p>
+                  </div>
+                )}
+
+                {error?.message?.includes("Only owner") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p className="font-semibold">Only the contract owner can create markets</p>
+                  </div>
+                )}
+
+                {!error?.message?.includes("Price") && !error?.message?.includes("owner") && (
+                  <div className="text-xs mt-2 p-2 bg-red-100 rounded">
+                    <p>Check the browser console (F12) for more details</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -352,10 +434,10 @@ export default function CreateMarketPage() {
               </button>
               <button
                 type="submit"
-                disabled={!thresholdsValid || !questionValid || isPending || isConfirming || isSuccess || isWrongNetwork}
-                className="bg-[#0f172a] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!thresholdsValid || isPending || isConfirming || isSuccess || isWrongNetwork || isOwnerCheckPending || !isOwner}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isPending || isConfirming ? "Creating…" : "Create Market"}
+                {isOwnerCheckPending ? "Checking ownership…" : isPending || isConfirming ? "Creating…" : "Create Market"}
               </button>
             </div>
           </div>

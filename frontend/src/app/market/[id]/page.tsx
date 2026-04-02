@@ -72,7 +72,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
 
   if (!marketId) {
     return (
-      <main className="max-w-[1200px] mx-auto px-4 py-8">
+      <main className="max-w-300 mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h1 className="text-2xl font-semibold mb-2">Invalid market ID</h1>
           <Link href="/" className="inline-flex items-center gap-2 text-[#2563eb] no-underline">
@@ -85,7 +85,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
 
   if (isLoading) {
     return (
-      <main className="max-w-[1200px] mx-auto px-4 py-8">
+      <main className="max-w-300 mx-auto px-4 py-8">
         <div className="text-center py-12 text-[#64748b]">Loading market…</div>
       </main>
     );
@@ -93,7 +93,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
 
   if (!hasMarket) {
     return (
-      <main className="max-w-[1200px] mx-auto px-4 py-8">
+      <main className="max-w-300 mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h1 className="text-2xl font-semibold mb-2">Market not found</h1>
           <p className="text-[#64748b] mb-4">Market #{id} does not exist on-chain.</p>
@@ -109,7 +109,7 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
   const t2 = Number(marketInfo.threshold2);
 
   return (
-    <main className="max-w-[1200px] mx-auto px-4 py-8">
+    <main className="max-w-300 mx-auto px-4 py-8">
       <Link
         href="/"
         className="inline-flex items-center gap-2 text-[#64748b] no-underline mb-6 hover:text-[#0f172a] transition-colors text-sm"
@@ -188,9 +188,9 @@ export default function MarketDetailPage({ params }: { params: Promise<{ id: str
                 <strong>Bracket 2</strong> — move &gt; {t2}% → resolves YES for this bracket
               </li>
             </ul>
-            <p className="text-xs text-[#94a3b8] mt-2">
+            {/* <p className="text-xs text-[#94a3b8] mt-2">
               Stakers in the winning bracket split the entire pool proportionally. All other stakes are lost.
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

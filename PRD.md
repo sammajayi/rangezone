@@ -10,8 +10,8 @@ RangeZone is a time-based on-chain primitive built on Rootstock that resolves a 
 
 The contract moves through four states. In the Open state users stake yes or no with rBTC into any of the open market i.e:
 
--  Will BTC be up by 2% by 5pm UTC? ---- Yes/No
-- Will BTC reach a new ATH by end of 2026? ---- Yes/No
+-  Will BTC be up by 2% by 5pm UTC? 
+- Will BTC reach a new ATH by end of 2026?
 - Will BTC go below 50k by December 31st 2026? etc 
 
 When the expiry time passes, the contract moves to Closed and no more stakes are accepted. The admin will trigger the resolution, or it can be automated, after which it reads the Chainlink BTC/USD price feed, computes the percentage movement from start price to end price, and moves the contract to Resolved.  So claim button is available if users predict correctly

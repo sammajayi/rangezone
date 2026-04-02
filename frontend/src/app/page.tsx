@@ -5,15 +5,20 @@ import Link from "next/link";
 import { useAllMarkets, MarketEntry } from "../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../lib/rangeZoneContract";
 import { Droplets, Hourglass } from 'lucide-react';
+import Image from "next/image";
 
-function getMarketQuestion(marketId: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(`market_question_${marketId}`) ?? "";
+function getMarketQuestion(marketId: string): Promise<string> {
+  return fetch(`/api/market-metadata?marketId=${marketId}`)
+    .then(res => res.json())
+    .then(data => data.question || "")
+    .catch(() => "");
 }
 
-function getMarketImage(marketId: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(`market_image_${marketId}`) ?? "";
+function getMarketImage(marketId: string): Promise<string> {
+  return fetch(`/api/market-metadata?marketId=${marketId}`)
+    .then(res => res.json())
+    .then(data => data.image || "")
+    .catch(() => "");
 }
 
 function CountdownTimer({ expiry }: { expiry: bigint }) {
@@ -47,8 +52,15 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
   const [isExpiredOnChain, setIsExpiredOnChain] = useState(false);
 
   useEffect(() => {
-    setQuestion(getMarketQuestion(id.toString()));
-    setMarketImage(getMarketImage(id.toString()));
+    const loadMetadata = async () => {
+      const q = await getMarketQuestion(id.toString());
+      const img = await getMarketImage(id.toString());
+      setQuestion(q);
+      setMarketImage(img);
+    };
+
+    loadMetadata();
+
     const check = () => {
       if (!market) return;
       const expired = market.state === 0 && market.expiry > 0n && BigInt(Math.floor(Date.now() / 1000)) >= market.expiry;
@@ -70,70 +82,74 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
   const stateBadgeClass = displayState === "expired" ? "bg-orange-100 text-orange-700" : (STATE_COLORS[state] ?? "");
 
   return (
-    <div className="border border-[rgba(15,23,42,0.08)] rounded-xl overflow-hidden">
+    <div className="border border-[rgba(15,23,42,0.08)] rounded-xl overflow-hidden hover:shadow-md transition-all bg-white">
       {/* Header */}
-      <div className="p-5 border-b border-[rgba(15,23,42,0.08)] flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+      <div className="p-6 border-b border-[rgba(15,23,42,0.08)] flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
           {marketImage ? (
-            <img
+            <Image
               src={marketImage}
               alt="Market"
-              width={128}
-              height={128}
-              className="rounded-xl object-cover border border-[rgba(15,23,42,0.08)] shrink-0"
-              style={{ width: 128, height: 128 }}
+              width={100}
+              height={100}
+              className="rounded-lg object-cover border border-[rgba(15,23,42,0.08)] shrink-0"
+              style={{ width: 100, height: 100, minWidth: 100 }}
             />
           ) : null}
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-lg font-semibold text-[#0f172a]">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-3 mb-2">
+              <h2 className="text-lg font-bold text-[#0f172a] line-clamp-2">
                 {question || `BTC Market #${id.toString()}`}
               </h2>
-              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${stateBadgeClass}`}>
+              <span className={`text-xs px-3 py-1 rounded-full font-semibold shrink-0 ${stateBadgeClass}`}>
                 {stateLabel}
               </span>
             </div>
-            <p className="text-sm text-[#64748b]">
-              Predict how much BTC will move by expiry — direction doesn&apos;t matter, only magnitude.
+            <p className="text-sm text-[#64748b] line-clamp-2">
+              Predict BTC price movement magnitude — direction doesn't matter, only magnitude.
             </p>
           </div>
         </div>
         {displayState === "expired" || isResolved ? (
           <Link
             href={`/market/${id.toString()}`}
-            className="inline-flex items-center gap-2 bg-[rgba(15,23,42,0.08)] text-[#64748b] no-underline px-4 py-2 rounded-lg font-semibold text-sm"
+            className="inline-flex items-center gap-2 bg-[rgba(15,23,42,0.08)] text-[#0f172a] hover:bg-[rgba(15,23,42,0.12)] no-underline px-4 py-2 rounded-lg font-semibold text-sm transition-colors shrink-0"
           >
-            View Results →
+            View Results
+            <span aria-hidden="true">→</span>
           </Link>
         ) : (
           <Link
             href={`/market/${id.toString()}`}
-            className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm"
+            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm transition-colors shrink-0"
           >
-            View &amp; Trade →
+            Trade
+            <span aria-hidden="true">→</span>
           </Link>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-[rgba(15,23,42,0.08)]">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[rgba(15,23,42,0.08)]">
         <div className="p-4">
-          <p className="text-xs text-[#64748b] mb-1">Start Price</p>
-          <p className="font-semibold text-[#0f172a] text-sm">{formatPrice(market.startPrice)}</p>
+          <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide">Start Price</p>
+          <p className="font-bold text-[#0f172a] text-lg">{formatPrice(market.startPrice)}</p>
         </div>
-        <div className="p-4 flex items-center gap-1">
-          <span><Droplets className="text-[#64748b]" /></span>
-          <p className="font-semibold text-[#0f172a] text-sm">{formatRbtc(totalPool)}</p>
+        <div className="p-4 flex flex-col">
+          <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide flex items-center gap-1">
+            <Droplets size={14} /> Pool
+          </p>
+          <p className="font-bold text-[#0f172a] text-lg">{formatRbtc(totalPool)}</p>
         </div>
-        <div className="p-4 flex items-center gap-1">
-          <p className="text-xs text-[#64748b] mb-1">{isOpen ? <Hourglass className="text-[#64748b]" /> : ""}</p>
-          <p className="font-semibold text-[#0f172a] text-sm">
+        <div className="p-4">
+          <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide">Time {isOpen ? <Hourglass size={12} className="inline" /> : ""}</p>
+          <p className="font-bold text-[#0f172a] text-lg">
             {isOpen ? <CountdownTimer expiry={market.expiry} /> : MarketStateLabel[state]}
           </p>
         </div>
         <div className="p-4">
-          <p className="text-xs text-[#64748b] mb-1">Winning Bracket</p>
-          <p className="font-semibold text-[#0f172a] text-sm">
+          <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide">Winner</p>
+          <p className="font-bold text-[#0f172a] text-lg">
             {isResolved
               ? getBracketLabel(market.winningBracket, market.threshold1, market.threshold2)
               : "—"}
@@ -142,9 +158,9 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
       </div>
 
       {/* Bracket distribution */}
-      <div className="p-5 border-t border-[rgba(15,23,42,0.08)]">
-        <p className="text-xs text-[#64748b] mb-3 font-medium uppercase tracking-wide">Bracket Stakes</p>
-        <div className="space-y-2">
+      <div className="p-6 border-t border-[rgba(15,23,42,0.08)]">
+        <p className="text-xs text-[#64748b] mb-4 font-semibold uppercase tracking-wider">Stake Distribution</p>
+        <div className="space-y-3">
           {([0, 1, 2] as const).map((b) => {
             const label = getBracketLabel(b, market.threshold1, market.threshold2);
             const total = bracketTotals[b];
@@ -152,15 +168,15 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
             const isWinner = isResolved && market.winningBracket === b;
             return (
               <div key={b}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className={`font-medium ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`text-sm font-semibold ${isWinner ? "text-green-700" : "text-[#0f172a]"}`}>
                     {label} {isWinner && "🏆"}
                   </span>
-                  <span className="text-[#64748b] text-xs">{formatRbtc(total)} ({pct}%)</span>
+                  <span className="text-[#64748b] text-xs font-medium">{formatRbtc(total)} • {pct}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${isWinner ? "bg-green-500" : "bg-[#6366f1]"}`}
+                    className={`h-full rounded-full transition-all duration-500 ${isWinner ? "bg-linear-to-r from-green-400 to-green-600" : "bg-linear-to-r from-[#6366f1] to-[#818cf8]"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -177,43 +193,59 @@ export default function Page() {
   const { entries, isLoading } = useAllMarkets();
 
   return (
-    <main className="max-w-300 mx-auto px-4 py-8">
-      <header className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">RangeZone Markets</h1>
-          <p className="text-[#64748b]">Predict the magnitude of BTC price movement and earn RBTC</p>
-        </div>
-        <Link
-          href="/create"
-          className="inline-flex items-center gap-2 bg-[#0f172a] text-white no-underline px-4 py-2 rounded-lg font-semibold"
-        >
-          Create market
-        </Link>
-      </header>
+    <main className="min-h-screen bg-linear-to-b from-white to-[rgba(15,23,42,0.02)]">
+      <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+        <header className="mb-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+          <div className="flex-1">
+            {/* <h1 className="text-3xl lg:text-4xl font-bold text-[#0f172a] mb-2">RangeZone Markets</h1> */}
+            <p className="text-lg text-[#64748b]">Predict BTC price movement magnitude and earn rewards</p>
+          </div>
+          <Link
+            href="/create"
+            className="inline-flex items-center gap-2 bg-linear-to-r from-orange-500 to-orange-600 hover:shadow-lg hover:from-orange-600 hover:to-orange-700 text-white no-underline px-6 py-3 rounded-lg font-semibold transition-all"
+          >
+            <span>+ Create Market</span>
+          </Link>
+        </header>
 
-      {isLoading && (
-        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-8 text-center text-[#64748b]">
-          Loading markets from chain…
-        </div>
-      )}
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 gap-8 mb-8">
+          {/* Main content - Markets */}
+          <div>
+            {isLoading && (
+              <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-12 text-center text-[#64748b] bg-white">
+                <div className="animate-pulse">
+                  <div className="h-8 bg-[rgba(15,23,42,0.06)] rounded-lg mb-2 w-40 mx-auto"></div>
+                  <p className="text-sm">Loading markets…</p>
+                </div>
+              </div>
+            )}
 
-      {!isLoading && entries.length === 0 && (
-        <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-8 text-center text-[#64748b]">
-          <p className="mb-2 font-medium">No markets yet</p>
-          <p className="text-sm">
-            The contract owner can create the first market from the{" "}
-            <Link href="/create" className="underline">create page</Link>.
-          </p>
-        </div>
-      )}
+            {!isLoading && entries.length === 0 && (
+              <div className="border border-dashed border-[rgba(15,23,42,0.08)] rounded-xl p-12 text-center bg-white">
+                <p className="mb-3 font-semibold text-[#0f172a] text-lg">No markets yet</p>
+                <p className="text-[#64748b] mb-6 max-w-sm mx-auto">
+                  Markets will appear here once created. Start by creating the first market.
+                </p>
+                <Link
+                  href="/create"
+                  className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white no-underline px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
+                >
+                  Create Market
+                </Link>
+              </div>
+            )}
 
-      {!isLoading && entries.length > 0 && (
-        <div className="space-y-4">
-          {entries.map((entry) => (
-            <MarketCard key={entry.id.toString()} entry={entry} />
-          ))}
+            {!isLoading && entries.length > 0 && (
+              <div className="space-y-4">
+                {entries.map((entry) => (
+                  <MarketCard key={entry.id.toString()} entry={entry} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </main>
   );
 }

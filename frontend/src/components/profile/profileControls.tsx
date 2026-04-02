@@ -106,7 +106,7 @@ export function ProfileControls({ variant }: ProfileControlsProps) {
                         <button
                             type="button"
                             onClick={() => setMenuOpen((prev) => !prev)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[rgba(15,23,42,0.08)] text-sm font-semibold text-[#0f172a] hover:bg-[rgba(15,23,42,0.04)] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0f172a]"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[rgba(15,23,42,0.08)] text-sm font-semibold text-[#0f172a] hover:bg-[rgba(15,40,42,0.04)] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0f172a]"
                             aria-haspopup="menu"
                         >
                             <ProfileIcon />

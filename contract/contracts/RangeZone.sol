@@ -39,6 +39,8 @@ contract RangeZone is ReentrancyGuard {
     uint256 public constant FEE = 5;
     uint256 public accumulatedFee;
     uint256 public marketCount;
+    uint256 public maxPriceAge;
+    
 
     mapping(uint256 => Market) public markets;
     mapping(uint256 => mapping(uint8 => mapping(address => uint256))) public stakes;
@@ -73,9 +75,10 @@ contract RangeZone is ReentrancyGuard {
         _;
     }
 
-    constructor(address _priceFeed) {
+    constructor(address _priceFeed, uint256 _maxPriceAge) {
         priceFeed = AggregatorV3Interface(_priceFeed);
         owner = msg.sender;
+        maxPriceAge = _maxPriceAge;
     }
 
     function createMarket(
@@ -92,7 +95,7 @@ contract RangeZone is ReentrancyGuard {
         (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price");
         require(updatedAt > 0, "Stale price");
-        require(block.timestamp - updatedAt <= 24 hours, "Price too old");
+        require(block.timestamp - updatedAt <= maxPriceAge, "Price too old");
 
         marketCount++;
         markets[marketCount] = Market({
@@ -133,7 +136,7 @@ contract RangeZone is ReentrancyGuard {
         (, int256 endPrice, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         require(endPrice > 0, "Invalid end price");
         require(updatedAt > 0, "Stale price");
-        require(block.timestamp - updatedAt <= 24 hours, "Price too old");
+        require(block.timestamp - updatedAt <= maxPriceAge, "Price too old");
 
         m.endPrice = endPrice;
         m.state = MarketState.Resolved;

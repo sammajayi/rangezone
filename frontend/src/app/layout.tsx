@@ -2,7 +2,9 @@ import './global.css';
 import { ReactNode } from 'react';
 import { Providers } from './providers';
 import Navbar from '../components/navbar';
+import Sidebar from '../components/sidebar';
 import Footer from '../components/footer';
+import LayoutClient from './layout-client';
 
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -30,11 +32,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="twitter:description" content="Predict BTC price movement magnitude, stake with conviction, and win RBTC." />
         <meta name="twitter:image" content="/og-image.png" />
       </head>
-      <body>
+      <body className="flex flex-col min-h-screen">
         <Providers>
-          <Navbar />
-          {children}
-          <Footer />
+          <LayoutClient>
+            <Navbar />
+            <div className="flex flex-1">
+              <Sidebar />
+              <main className="flex-1 w-full">
+                {children}
+              </main>
+            </div>
+            <Footer />
+          </LayoutClient>
         </Providers>
       </body>
     </html>

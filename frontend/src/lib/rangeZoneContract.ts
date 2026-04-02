@@ -1,180 +1,214 @@
-export const RANGE_ZONE_ADDRESS = "0x73689f97092c0b27DDd90cd59b14Ca691dE754D7" as const;
+export const RANGE_ZONE_ADDRESS = "0x3dcDc6FbE53dD8c55F53EA0653f22787E9FFCe36" as const;
+export const MOCK_PRICE_FEED_ADDRESS = "0xD2b7A578BAe996E2bB040B827cE9C26e4EC34342" as const;
 
 export const RANGE_ZONE_ABI = [
   {
+    inputs: [
+      { name: "_priceFeed", type: "address", internalType: "address" },
+      { name: "_maxPriceAge", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "nonpayable",
     type: "constructor",
-    inputs: [{ name: "_priceFeed", type: "address", internalType: "address" }],
-    stateMutability: "nonpayable",
   },
   {
-    type: "function",
-    name: "createMarket",
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error",
+  },
+  {
+    anonymous: false,
     inputs: [
-      { name: "_duration", type: "uint256", internalType: "uint256" },
-      { name: "_threshold1", type: "uint256", internalType: "uint256" },
-      { name: "_threshold2", type: "uint256", internalType: "uint256" },
+      { indexed: true, internalType: "uint256", name: "marketId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
     ],
-    outputs: [],
-    stateMutability: "nonpayable",
+    name: "Claimed",
+    type: "event",
   },
   {
-    type: "function",
-    name: "stake",
+    anonymous: false,
     inputs: [
-      { name: "_marketId", type: "uint256", internalType: "uint256" },
-      { name: "_bracket", type: "uint8", internalType: "uint8" },
+      { indexed: true, internalType: "uint256", name: "marketId", type: "uint256" },
+      { indexed: false, internalType: "int256", name: "startPrice", type: "int256" },
+      { indexed: false, internalType: "uint256", name: "expiry", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "threshold1", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "threshold2", type: "uint256" },
     ],
-    outputs: [],
-    stateMutability: "payable",
+    name: "MarketCreated",
+    type: "event",
   },
   {
-    type: "function",
-    name: "resolve",
-    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
-    outputs: [],
-    stateMutability: "nonpayable",
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "marketId", type: "uint256" },
+      { indexed: false, internalType: "uint8", name: "winningBracket", type: "uint8" },
+      { indexed: false, internalType: "int256", name: "endPrice", type: "int256" },
+    ],
+    name: "Resolved",
+    type: "event",
   },
   {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "marketId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint8", name: "bracket", type: "uint8" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "Staked",
+    type: "event",
+  },
+  {
+    inputs: [],
+    name: "FEE",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
     type: "function",
+  },
+  {
+    inputs: [],
+    name: "accumulatedFee",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "uint8", name: "", type: "uint8" },
+    ],
+    name: "bracketTotals",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_marketId", type: "uint256" }],
     name: "claim",
-    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "_duration", type: "uint256" },
+      { internalType: "uint256", name: "_threshold1", type: "uint256" },
+      { internalType: "uint256", name: "_threshold2", type: "uint256" },
+    ],
+    name: "createMarket",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
-    name: "withdrawFee",
+  },
+  {
     inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
     name: "getCurrentMarket",
-    inputs: [],
     outputs: [
-      { name: "id", type: "uint256", internalType: "uint256" },
+      { internalType: "uint256", name: "id", type: "uint256" },
       {
+        components: [
+          { internalType: "int256", name: "startPrice", type: "int256" },
+          { internalType: "int256", name: "endPrice", type: "int256" },
+          { internalType: "uint256", name: "expiry", type: "uint256" },
+          { internalType: "uint256", name: "totalPool", type: "uint256" },
+          { internalType: "uint8", name: "winningBracket", type: "uint8" },
+          { internalType: "enum RangeZone.MarketState", name: "state", type: "uint8" },
+          { internalType: "uint256", name: "threshold1", type: "uint256" },
+          { internalType: "uint256", name: "threshold2", type: "uint256" },
+        ],
+        internalType: "struct RangeZone.Market",
         name: "m",
         type: "tuple",
-        internalType: "struct RangeZone.Market",
-        components: [
-          { name: "startPrice", type: "int256", internalType: "int256" },
-          { name: "endPrice", type: "int256", internalType: "int256" },
-          { name: "expiry", type: "uint256", internalType: "uint256" },
-          { name: "totalPool", type: "uint256", internalType: "uint256" },
-          { name: "winningBracket", type: "uint8", internalType: "uint8" },
-          { name: "state", type: "uint8", internalType: "enum RangeZone.MarketState" },
-          { name: "threshold1", type: "uint256", internalType: "uint256" },
-          { name: "threshold2", type: "uint256", internalType: "uint256" },
-        ],
       },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
-    type: "function",
+    inputs: [{ internalType: "uint256", name: "_marketId", type: "uint256" }],
     name: "getMarket",
-    inputs: [{ name: "_marketId", type: "uint256", internalType: "uint256" }],
     outputs: [
       {
+        components: [
+          { internalType: "int256", name: "startPrice", type: "int256" },
+          { internalType: "int256", name: "endPrice", type: "int256" },
+          { internalType: "uint256", name: "expiry", type: "uint256" },
+          { internalType: "uint256", name: "totalPool", type: "uint256" },
+          { internalType: "uint8", name: "winningBracket", type: "uint8" },
+          { internalType: "enum RangeZone.MarketState", name: "state", type: "uint8" },
+          { internalType: "uint256", name: "threshold1", type: "uint256" },
+          { internalType: "uint256", name: "threshold2", type: "uint256" },
+        ],
+        internalType: "struct RangeZone.Market",
         name: "",
         type: "tuple",
-        internalType: "struct RangeZone.Market",
-        components: [
-          { name: "startPrice", type: "int256", internalType: "int256" },
-          { name: "endPrice", type: "int256", internalType: "int256" },
-          { name: "expiry", type: "uint256", internalType: "uint256" },
-          { name: "totalPool", type: "uint256", internalType: "uint256" },
-          { name: "winningBracket", type: "uint8", internalType: "uint8" },
-          { name: "state", type: "uint8", internalType: "enum RangeZone.MarketState" },
-          { name: "threshold1", type: "uint256", internalType: "uint256" },
-          { name: "threshold2", type: "uint256", internalType: "uint256" },
-        ],
       },
     ],
     stateMutability: "view",
+    type: "function",
   },
   {
-    type: "function",
-    name: "stakes",
-    inputs: [
-      { name: "", type: "uint256", internalType: "uint256" },
-      { name: "", type: "uint8", internalType: "uint8" },
-      { name: "", type: "address", internalType: "address" },
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "bracketTotals",
-    inputs: [
-      { name: "", type: "uint256", internalType: "uint256" },
-      { name: "", type: "uint8", internalType: "uint8" },
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
+    inputs: [],
     name: "marketCount",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
+    type: "function",
   },
   {
+    inputs: [],
+    name: "maxPriceAge",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
     type: "function",
+  },
+  {
+    inputs: [],
     name: "owner",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
-  },
-  {
     type: "function",
-    name: "accumulatedFee",
+  },
+  {
     inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    name: "priceFeed",
+    outputs: [{ internalType: "contract AggregatorV3Interface", name: "", type: "address" }],
     stateMutability: "view",
+    type: "function",
   },
   {
-    type: "event",
-    name: "MarketCreated",
-    inputs: [
-      { name: "marketId", type: "uint256", indexed: true },
-      { name: "startPrice", type: "int256", indexed: false },
-      { name: "expiry", type: "uint256", indexed: false },
-      { name: "threshold1", type: "uint256", indexed: false },
-      { name: "threshold2", type: "uint256", indexed: false },
-    ],
+    inputs: [{ internalType: "uint256", name: "_marketId", type: "uint256" }],
+    name: "resolve",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
-    type: "event",
-    name: "Staked",
     inputs: [
-      { name: "marketId", type: "uint256", indexed: true },
-      { name: "user", type: "address", indexed: true },
-      { name: "bracket", type: "uint8", indexed: false },
-      { name: "amount", type: "uint256", indexed: false },
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "uint8", name: "", type: "uint8" },
+      { internalType: "address", name: "", type: "address" },
     ],
+    name: "stakes",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
-    type: "event",
-    name: "Resolved",
     inputs: [
-      { name: "marketId", type: "uint256", indexed: true },
-      { name: "winningBracket", type: "uint8", indexed: false },
-      { name: "endPrice", type: "int256", indexed: false },
+      { internalType: "uint256", name: "_marketId", type: "uint256" },
+      { internalType: "uint8", name: "_bracket", type: "uint8" },
     ],
+    name: "stake",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
   },
   {
-    type: "event",
-    name: "Claimed",
-    inputs: [
-      { name: "marketId", type: "uint256", indexed: true },
-      { name: "user", type: "address", indexed: true },
-      { name: "amount", type: "uint256", indexed: false },
-    ],
+    inputs: [],
+    name: "withdrawFee",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
 ] as const;
 
@@ -200,20 +234,15 @@ export function formatPrice(price: bigint): string {
   return `$${(Number(price) / 1e8).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
-// export function formatRbtc(wei: bigint): string {
-//   return `${(Number(wei) / 1e18).toFixed(6)} tRBTC`;
-// }
-
 export function formatRbtc(wei: bigint): string {
   // Mock price: 1 tRBTC = $30,000 (adjust as needed)
   const MOCK_PRICE_USD = 30000;
-  
+
   const tRbtcAmount = Number(wei) / 1e18;
   const usdAmount = tRbtcAmount * MOCK_PRICE_USD;
-  
+
   return `$${usdAmount.toFixed(2)}`;
 }
-
 
 export function getBracketLabel(bracket: number, threshold1: bigint, threshold2: bigint): string {
   const t1 = Number(threshold1);
