@@ -27,11 +27,11 @@ function TxRow({ tx }: { tx: any }) {
     <div className="py-4 flex items-start justify-between gap-4 hover:bg-[rgba(15,23,42,0.02)] transition-colors">
       <div className="flex items-start gap-4 flex-1 min-w-0">
         <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-            isStake ? "bg-indigo-100 text-indigo-700" : "bg-green-100 text-green-700"
+          className={`w-3 h-3 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+            isStake ? "bg-indigo-600 text-indigo-400" : "bg-green-700 text-green-700"
           }`}
         >
-          {isStake ? "📍" : "🎁"}
+          {isStake ? "" : ""}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[#0f172a]">
@@ -59,8 +59,8 @@ function TxRow({ tx }: { tx: any }) {
       </div>
       <div className="text-right shrink-0 ml-4">
         <p
-          className={`text-lg font-bold ${
-            isStake ? "text-[#0f172a]" : "text-green-600"
+          className={`text-xs font-bold ${
+            isStake ? "text-red-500" : "text-green-600"
           }`}
         >
           {isStake ? "−" : "+"}{formatRbtc(BigInt(tx.amount))}
@@ -79,7 +79,7 @@ export default function TransactionPage() {
 
   if (!isConnected) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)]">
+      <main className="min-h-screen flex items-center justify-center bg-linear-to-b from-white to-[rgba(15,23,42,0.02)]">
         <div className="max-w-2xl w-full mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-[#0f172a] mb-2">Transaction History</h1>
@@ -98,7 +98,7 @@ export default function TransactionPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)]">
+    <main className="min-h-screen bg-linear-to-b from-white to-[rgba(15,23,42,0.02)]">
       <div className="max-w-300 mx-auto px-4 py-8 lg:py-12">
         <div className="max-w-2xl mx-auto">
           <header className="mb-8">
@@ -119,7 +119,7 @@ export default function TransactionPage() {
               {!loading && transactions.length > 0 && (
                 <div className="flex gap-4 text-sm text-[#64748b]">
                   <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" />
                     Stake
                   </span>
                   <span className="flex items-center gap-2">

@@ -6,11 +6,15 @@ import { ProfileControls } from "./profile/profileControls";
 import Image from "next/image";
 
 const NAV_ITEMS = [
-  { label: "Markets", href: "/" },
-  { label: "Create", href: "/create" },
-  { label: "How it works", href: "/learn" },
+    { label: "Markets", href: "/" },
+    { label: "Create", href: "/create" },
+    { label: "How it works", href: "/learn" },
 ];
 
+
+//  <Link href="/" className="hidden lg:inline-flex items-center gap-2 no-underline text-[#0f172a] font-semibold border border-gray-200 rounded-lg p-10 mx-auto">
+
+          
 export default function Navbar() {
     const [open, setOpen] = useState(false);
 
@@ -18,7 +22,12 @@ export default function Navbar() {
         <>
             {/* Desktop header - minimal, only sign in */}
             <nav className="hidden lg:block bg-white border-b border-[rgba(15,23,42,0.04)] sticky top-0 z-40" aria-label="Main navigation">
-                <div className="max-w-300 mx-auto px-4 h-16 flex items-center justify-end relative">
+                
+                <div className="max-w-360 mx-auto px-4 h-16 flex items-center justify-between relative">
+                    <Link href="/" className="hidden lg:inline-flex items-center gap-2 no-underline text-[#0f172a] font-semibold">
+                    <Image src="/rangezone-logo.svg" alt="RangeZone Logo" width={70} height={70} className="w-10 h-10" />
+                    <span className="font-bold text-2xl">RangeZone</span>
+                </Link>
                     <ProfileControls variant="desktop" />
                 </div>
             </nav>
@@ -27,7 +36,7 @@ export default function Navbar() {
             <nav className="lg:hidden bg-white border-b border-[rgba(15,23,42,0.04)] sticky top-0 z-40" aria-label="Main navigation">
                 <div className="px-4 h-16 flex items-center justify-between relative">
                     <Link href="/" className="inline-flex items-center no-underline text-[#0f172a] font-semibold text-lg" aria-label="RangeZone home">
-                        <Image src="/rangezone-logo.svg" alt="RangeZone Logo" width={60} height={60} className="w-10 h-10 md:w-[60px] md:h-[60px]" />
+                        <Image src="/rangezone-logo.svg" alt="RangeZone Logo" width={60} height={60} className="w-10 h-10 md:w-15 md:h-15" />
                     </Link>
 
                     <div className="flex items-center gap-3">

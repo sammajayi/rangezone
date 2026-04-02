@@ -32,7 +32,7 @@ export default function CreateMarketPage() {
   const isOwnerCheckPending = isConnected && !owner && ownerLoading;
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [duration, setDuration] = useState(DURATION_OPTIONS[3].seconds);
+  const [duration, setDuration] = useState(DURATION_OPTIONS[0].seconds);
   const [threshold1, setThreshold1] = useState("3");
   const [threshold2, setThreshold2] = useState("7");
   const [question, setQuestion] = useState("");
@@ -42,12 +42,18 @@ export default function CreateMarketPage() {
   useEffect(() => {
     if (isSuccess) {
       const newId = (Number(marketCount ?? 0n) + 1).toString();
-      if (question.trim()) {
-        localStorage.setItem(`market_question_${newId}`, question.trim());
-      }
-      if (imageDataUrl) {
-        localStorage.setItem(`market_image_${newId}`, imageDataUrl);
-      }
+
+      // Save metadata to API
+      fetch("/api/market-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marketId: newId,
+          question: question.trim() || null,
+          image: imageDataUrl || null,
+        }),
+      }).catch(err => console.error("Error saving market metadata:", err));
+
       setTimeout(() => router.push("/"), 2000);
     }
   }, [isSuccess]);
@@ -133,7 +139,7 @@ export default function CreateMarketPage() {
               <div className="flex flex-col items-center">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                    currentStep >= step ? "bg-[#0f172a] text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
+                    currentStep >= step ? "bg-orange-500 text-white" : "bg-[rgba(15,23,42,0.08)] text-[#64748b]"
                   }`}
                 >
                   {step}
@@ -145,7 +151,7 @@ export default function CreateMarketPage() {
               {index < 2 && (
                 <div
                   className={`h-1 flex-1 mx-2 mb-4 transition-colors ${
-                    currentStep > step ? "bg-[#0f172a]" : "bg-[rgba(15,23,42,0.08)]"
+                    currentStep > step ? "bg-orange-500" : "bg-[rgba(15,23,42,0.08)]"
                   }`}
                 />
               )}
@@ -345,7 +351,7 @@ export default function CreateMarketPage() {
             </div>
 
             {/* Summary */}
-            <div className="bg-gradient-to-br from-[#6366f1]/10 via-transparent to-transparent border-2 border-[#6366f1]/30 rounded-lg p-6 space-y-3">
+            <div className="bg-linear-to-br from-[#6366f1]/10 via-transparent to-transparent border-2 border-[#6366f1]/30 rounded-lg p-6 space-y-3">
               <p className="font-bold text-[#0f172a] mb-4 flex items-center gap-2 text-base">
                 <span className="text-xl">📋</span> Market Summary
               </p>

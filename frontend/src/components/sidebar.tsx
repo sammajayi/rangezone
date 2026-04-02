@@ -13,9 +13,9 @@ import { formatRbtc } from "../lib/rangeZoneContract";
 
 // Dummy data for demonstration (fallback when subgraph not available)
 const DUMMY_USER_STATS = {
-  totalStaked: BigInt("5000000000000000000"), // 5 tRBTC
-  totalWinnings: BigInt("7500000000000000000"), // 7.5 tRBTC
-  profit: BigInt("2500000000000000000"), // 2.5 tRBTC
+  totalStaked: BigInt("500"), 
+  totalWinnings: BigInt("750"), 
+  profit: BigInt("250000"), 
   activeMarkets: 1,
 };
 
@@ -78,7 +78,7 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-16 bottom-0 w-72 bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)] border-r border-[rgba(15,23,42,0.12)] overflow-y-auto transition-transform duration-300 ease-in-out z-40 lg:static lg:top-0 lg:w-96 lg:border-r lg:border-r-[rgba(15,23,42,0.08)] lg:shadow-none ${
+        className={`fixed  left-0 top-16  bottom-0 w-72 bg-linear-to-b from-white to-[rgba(15,23,42,0.02)] border-r border-[rgba(15,23,42,0.12)] overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:top-0 lg:w-96 lg:border-r lg:border-r-[rgba(15,23,42,0.08)] lg:shadow-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
@@ -93,29 +93,29 @@ export default function Sidebar() {
           </button>
 
           {/* Logo - desktop only */}
-          <Link href="/" className="hidden lg:inline-flex items-center gap-2 no-underline text-[#0f172a] font-semibold border border-gray-200 rounded-lg p-10 mx-auto">
+          {/* <Link href="/" className="hidden lg:inline-flex items-center gap-2 no-underline text-[#0f172a] font-semibold border border-gray-200 rounded-lg p-10 mx-auto">
             <Image src="/rangezone-logo.svg" alt="RangeZone Logo" width={60} height={60} className="w-10 h-10" />
             <span className="font-bold">RangeZone</span>
-          </Link>
+          </Link> */}
 
           {/* User Stats Section */}
           {isConnected ? (
-            <div className="space-y-3">
-              <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wide px-1">Your Stats</p>
+            <div className="space-y-3 ">
+              <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wide px-1">Portfolio</p>
               <div className="grid grid-cols-2 gap-3">
-                <div className="border border-[#6366f1] rounded-lg p-3 bg-gradient-to-br from-[#6366f1]/10 to-transparent hover:shadow-md transition-shadow">
+                <div className="border border-[#6366f1] rounded-lg p-3 bg-linear-to-br from-[#6366f1]/10 to-transparent hover:shadow-md transition-shadow">
                   <p className="text-xs text-[#64748b] mb-1 font-semibold">Total Stake</p>
                   <p className="text-base font-bold text-[#0f172a]">
                     {formatRbtc(userStats.totalStaked)}
                   </p>
                 </div>
-                <div className="border border-orange-500 rounded-lg p-3 bg-gradient-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
+                <div className="border border-orange-500 rounded-lg p-3 bg-linear-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
                   <p className="text-xs text-[#64748b] mb-1 font-semibold">Winnings</p>
                   <p className="text-base font-bold text-orange-600">
                     {formatRbtc(userStats.totalWinnings)}
                   </p>
                 </div>
-                <div className={`border rounded-lg p-3 bg-gradient-to-br transition-shadow hover:shadow-md ${
+                <div className={`border rounded-lg p-3 bg-linear-to-br transition-shadow hover:shadow-md ${
                   userStats.profit >= 0n
                     ? "border-green-300 from-green-50 to-transparent"
                     : "border-red-300 from-red-50 to-transparent"
@@ -130,7 +130,7 @@ export default function Sidebar() {
                     {formatRbtc(userStats.profit)}
                   </p>
                 </div>
-                <div className="border border-orange-400 rounded-lg p-3 bg-gradient-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
+                <div className="border border-orange-400 rounded-lg p-3 bg-linear-to-br from-orange-50 to-transparent hover:shadow-md transition-shadow">
                   <p className="text-xs text-[#64748b] mb-1 font-semibold">Active</p>
                   <p className="text-base font-bold text-orange-600">
                     {userStats.activeMarkets}
@@ -151,7 +151,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={closeSidebar}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-[#0f172a] hover:bg-[#6366f1]/10 hover:text-[#6366f1] transition-all hover:border-l-3 hover:border-[#6366f1] hover:pl-[13px]"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-[#0f172a] hover:bg-[#6366f1]/10 hover:text-[#6366f1] transition-all hover:border-l-3 hover:border-[#6366f1] hover:pl-3.25"
               >
                 <item.icon size={20} className="text-[#64748b] group-hover:text-[#6366f1]" />
                 {item.label}

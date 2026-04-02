@@ -5,15 +5,20 @@ import Link from "next/link";
 import { useAllMarkets, MarketEntry } from "../hooks/useRangeZone";
 import { MarketStateLabel, formatPrice, formatRbtc, getBracketLabel } from "../lib/rangeZoneContract";
 import { Droplets, Hourglass } from 'lucide-react';
+import Image from "next/image";
 
-function getMarketQuestion(marketId: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(`market_question_${marketId}`) ?? "";
+function getMarketQuestion(marketId: string): Promise<string> {
+  return fetch(`/api/market-metadata?marketId=${marketId}`)
+    .then(res => res.json())
+    .then(data => data.question || "")
+    .catch(() => "");
 }
 
-function getMarketImage(marketId: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(`market_image_${marketId}`) ?? "";
+function getMarketImage(marketId: string): Promise<string> {
+  return fetch(`/api/market-metadata?marketId=${marketId}`)
+    .then(res => res.json())
+    .then(data => data.image || "")
+    .catch(() => "");
 }
 
 function CountdownTimer({ expiry }: { expiry: bigint }) {
@@ -47,8 +52,15 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
   const [isExpiredOnChain, setIsExpiredOnChain] = useState(false);
 
   useEffect(() => {
-    setQuestion(getMarketQuestion(id.toString()));
-    setMarketImage(getMarketImage(id.toString()));
+    const loadMetadata = async () => {
+      const q = await getMarketQuestion(id.toString());
+      const img = await getMarketImage(id.toString());
+      setQuestion(q);
+      setMarketImage(img);
+    };
+
+    loadMetadata();
+
     const check = () => {
       if (!market) return;
       const expired = market.state === 0 && market.expiry > 0n && BigInt(Math.floor(Date.now() / 1000)) >= market.expiry;
@@ -75,7 +87,7 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
       <div className="p-6 border-b border-[rgba(15,23,42,0.08)] flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex items-start gap-4 flex-1 min-w-0">
           {marketImage ? (
-            <img
+            <Image
               src={marketImage}
               alt="Market"
               width={100}
@@ -121,7 +133,7 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[rgba(15,23,42,0.08)]">
         <div className="p-4">
           <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide">Start Price</p>
-          <p className="font-bold text-[#0f172a] text-lg">${formatPrice(market.startPrice)}</p>
+          <p className="font-bold text-[#0f172a] text-lg">{formatPrice(market.startPrice)}</p>
         </div>
         <div className="p-4 flex flex-col">
           <p className="text-xs text-[#64748b] mb-2 font-semibold uppercase tracking-wide flex items-center gap-1">
@@ -164,7 +176,7 @@ function MarketCard({ entry }: { entry: MarketEntry }) {
                 </div>
                 <div className="h-2 rounded-full bg-[rgba(15,23,42,0.06)] overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${isWinner ? "bg-gradient-to-r from-green-400 to-green-600" : "bg-gradient-to-r from-[#6366f1] to-[#818cf8]"}`}
+                    className={`h-full rounded-full transition-all duration-500 ${isWinner ? "bg-linear-to-r from-green-400 to-green-600" : "bg-linear-to-r from-[#6366f1] to-[#818cf8]"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -181,16 +193,16 @@ export default function Page() {
   const { entries, isLoading } = useAllMarkets();
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-[rgba(15,23,42,0.02)]">
+    <main className="min-h-screen bg-linear-to-b from-white to-[rgba(15,23,42,0.02)]">
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
         <header className="mb-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-3xl lg:text-4xl font-bold text-[#0f172a] mb-2">RangeZone Markets</h1>
+            {/* <h1 className="text-3xl lg:text-4xl font-bold text-[#0f172a] mb-2">RangeZone Markets</h1> */}
             <p className="text-lg text-[#64748b]">Predict BTC price movement magnitude and earn rewards</p>
           </div>
           <Link
             href="/create"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:shadow-lg hover:from-orange-600 hover:to-orange-700 text-white no-underline px-6 py-3 rounded-lg font-semibold transition-all"
+            className="inline-flex items-center gap-2 bg-linear-to-r from-orange-500 to-orange-600 hover:shadow-lg hover:from-orange-600 hover:to-orange-700 text-white no-underline px-6 py-3 rounded-lg font-semibold transition-all"
           >
             <span>+ Create Market</span>
           </Link>
@@ -204,7 +216,7 @@ export default function Page() {
               <div className="border border-[rgba(15,23,42,0.08)] rounded-xl p-12 text-center text-[#64748b] bg-white">
                 <div className="animate-pulse">
                   <div className="h-8 bg-[rgba(15,23,42,0.06)] rounded-lg mb-2 w-40 mx-auto"></div>
-                  <p className="text-sm">Loading markets from blockchain…</p>
+                  <p className="text-sm">Loading markets…</p>
                 </div>
               </div>
             )}
